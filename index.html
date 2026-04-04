@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#28a745">
+    <title>Santiago de las Vegas Market v7.0</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Fix para evitar zoom al volver atrás */
+        html, body {
+            overflow-x: hidden;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+
+<!-- SCRIPT PARA FORZAR RECARGA AL VOLVER DEL FORMULARIO -->
+<script>
+    // Si venimos del formulario, forzar recarga limpia
+    if (localStorage.getItem('volviendo_formulario')) {
+        localStorage.removeItem('volviendo_formulario');
+        location.reload();
+    }
+    
+    // Forzar scroll arriba siempre
+    window.addEventListener('load', function() {
+        window.scrollTo(0, 0);
+    });
+    
+    // Forzar recarga limpia al volver con gesto atrás
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            location.reload();
+        }
+    });
+</script>
+
+<div id="splash">
+    <div class="splash-logo-wrapper">
+        <img src="https://i.postimg.cc/RZTS3mg7/1774530222644.png" alt="Santiago Market" class="splash-logo">
+    </div>
+    <div class="splash-title">Santiago de las Vegas <span>Market</span></div>
+    <div class="splash-subtitle">🛒 Tu mercado local, en un solo lugar</div>
+    <div class="progress-container">
+        <div class="progress-bar-bg">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">Cargando 0%</div>
+    </div>
+    <div class="version-tag">v7.0 | SANTIAGO MARKET</div>
+</div>
+
+<div id="mainContent" style="display:none;">
+    <div class="header-container">
+        <div style="width: 44px;"></div>
+        <div class="logo-area">
+            <div class="logo-main">SANTIAGO DE LAS VEGAS</div>
+            <div class="logo-highlight">MARKET 🛒</div>
+            <div class="tagline">La Vitrina Digital de Santiago</div>
+        </div>
+        <div style="width: 44px;"></div>
+    </div>
+
+    <div class="search-wrapper">
+        <div class="search-inner">
+            <input type="text" id="buscador" placeholder="🔎 Busca por nombre, producto o dirección...">
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn-ayuda" id="btnAyuda">❓</button>
+            <button class="settings-btn-search" id="btnSettings">⚙️</button>
+        </div>
+    </div>
+
+    <div class="filters-container">
+        <div class="filters-scroll">
+            <button class="filter-chip active" data-cat="todos">📱 Todos</button>
+            <button class="filter-chip" data-cat="mypime">1. Mypimes</button>
+            <button class="filter-chip" data-cat="moda">2. Ropa y Moda</button>
+            <button class="filter-chip" data-cat="ferreteria">3. Ferreterías</button>
+            <button class="filter-chip" data-cat="restaurante">4. Restaurantes y Cafetería</button>
+            <button class="filter-chip" data-cat="taller">5. Talleres Celulares</button>
+            <button class="filter-chip" data-cat="ventacasa">6. Ventas de Casa</button>
+            <button class="filter-chip" data-cat="otros">📦 Otros</button>
+            <button class="filter-chip" data-cat="ofertas">🔥 Ofertas del día</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="cards-grid" id="cardsGrid"></div>
+    </div> 
+
+    <div style="text-align: center; padding: 16px;">
+        <a href="formulario.html" target="_blank" class="inscribir-btn" style="text-decoration: none; display: inline-block; margin-bottom: 12px; background: linear-gradient(135deg, #28a745, #1f8b3a);">📝 INSCRIBIR MI NEGOCIO</a>
+        <a href="panel.html" target="_blank" class="inscribir-btn" style="text-decoration: none; display: inline-block; background: linear-gradient(135deg, #f1c40f, #e67e22);">🔧 EDITAR MI NEGOCIO</a>
+        <p style="font-size: 9px; color: var(--texto-gris-oscuro); margin-top: 12px;">SANTIAGO MARKET v7.0 | BY DARIEN TATTOO</p>
+    </div> 
+
+    <footer>
+        <div class="signature">DARIEN TATTOO</div>
+        <div class="dev-tag">Professional Design & Tech Service</div>
+    </footer>
+</div>
+
+<!-- MODAL DE AYUDA -->
+<div id="modalAyuda" class="modal-ayuda">
+    <div class="modal-ayuda-content glass-effect">
+        <span class="modern-close" id="closeAyuda">&times;</span>
+        <div class="modal-ayuda-header">
+            <div class="modal-ayuda-icono-principal">✨</div>
+            <h2 class="modal-ayuda-title">Santiago Market</h2>
+            <p class="modal-ayuda-subtitle">Tu vitrina digital, tu comunidad, tu orgullo</p>
+        </div>
+        <div class="cards-modernas">
+            <div class="card-modern">
+                <div class="card-icon">🛒</div>
+                <h3>Para Clientes</h3>
+                <div class="card-beneficios">
+                    <div class="beneficio"><span class="beneficio-icon">🛡️</span><div><strong>Confianza</strong><p>Negocios verificados. Compra seguro en comercios reales de Santiago.</p></div></div>
+                    <div class="beneficio"><span class="beneficio-icon">💸</span><div><strong>Ofertas Exclusivas</strong><p>Sección Ofertas del Día con los mejores precios antes que nadie.</p></div></div>
+                    <div class="beneficio"><span class="beneficio-icon">📱</span><div><strong>Suave y Rápida</strong><p>Diseñada para cargar rápido y consumir pocos datos. Ideal para usar en la calle.</p></div></div>
+                    <div class="beneficio"><span class="beneficio-icon">⭐</span><div><strong>Tu Opinión Importa</strong><p>Califica con estrellas y ayuda a otros vecinos a elegir mejor.</p></div></div>
+                </div>
+            </div>
+            <div class="card-modern">
+                <div class="card-icon">👔</div>
+                <h3>Para Dueños de Negocios</h3>
+                <div class="card-beneficios">
+                    <div class="beneficio"><span class="beneficio-icon">🚀</span><div><strong>Perfil Profesional</strong><p>Fotografías, menú con precios, horarios y galería. Genera confianza antes del primer contacto.</p></div></div>
+                    <div class="beneficio"><span class="beneficio-icon">⚡</span><div><strong>Actualización Instantánea</strong><p>Cambia tus ofertas y productos al momento. Tus clientes siempre ven lo último.</p></div></div>
+                    <div class="beneficio"><span class="beneficio-icon">📊</span><div><strong>Visibilidad 24/7</strong><p>Conecta directamente con clientes locales sin depender de algoritmos. Siempre te encuentran.</p></div></div>
+                    <div class="beneficio"><span class="beneficio-icon">⭐</span><div><strong>Credibilidad</strong><p>Las valoraciones con estrellas construyen reputación y generan confianza en nuevos clientes.</p></div></div>
+                </div>
+            </div>
+            <div class="card-modern">
+                <div class="card-icon">🤝</div>
+                <h3>Para Nuestra Comunidad</h3>
+                <div class="card-beneficios">
+                    <div class="beneficio"><span class="beneficio-icon">🌱</span><div><strong>Apoya lo Local</strong><p>Cada compra fortalece la economía de Santiago y ayuda a familias de nuestro pueblo.</p></div></div>
+                    <div class="beneficio"><span class="beneficio-icon">🏘️</span><div><strong>Unidos</strong><p>Conectamos vecinos con emprendedores. Del restaurante a la ferretería, todo en un lugar.</p></div></div>
+                    <div class="beneficio"><span class="beneficio-icon">📢</span><div><strong>Comparte</strong><p>Entre más seamos, más fuerte es nuestra red de apoyo local.</p></div></div>
+                    <div class="beneficio"><span class="beneficio-icon">💚</span><div><strong>Orgullo Santiaguero</strong><p>Hecha para ti y para los tuyos. Porque amamos lo nuestro.</p></div></div>
+                </div>
+            </div>
+        </div>
+        <button class="modern-btn-bubble" id="btnEntendido"><span class="btn-text">✨ ENTENDIDO ✨</span><span class="btn-subtext">vamos a descubrir</span></button>
+    </div>
+</div>
+
+<!-- MODAL MENÚ Y PRECIOS -->
+<div id="modalMenu" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" id="closeMenu">&times;</span>
+        <div class="modal-header">
+            <h3 id="modalNombre">Cargando...</h3>
+            <p id="modalDireccion"></p>
+        </div>
+        <div class="modal-body">
+            <div id="modalProductos" class="modal-productos"></div>
+            <div id="modalGaleria" class="modal-galerias"></div>
+            <div class="modal-buttons" id="modalBotones"></div>
+        </div>
+    </div>
+</div>
+
+<!-- PANEL DE AJUSTES -->
+<div id="settingsPanel" class="settings-panel">
+    <h3>
+        Ajustes
+        <div class="visit-stats">
+            <span class="chart-icon">📈</span>
+            <span class="visit-count-inline" id="visitCountDisplay">Cargando...</span>
+        </div>
+    </h3>
+    <div class="settings-option" id="optionTheme"><span>🌓 Modo oscuro / claro</span><span id="themeStatus">🌙 Oscuro</span></div>
+    <div class="settings-option" id="optionRating"><span>⭐ Valorar la app</span><span>¡Danos tu opinión!</span></div>
+    <div class="settings-option" id="optionReset"><span>🔄 Reiniciar valoraciones</span><span>Todas las estrellas en 0</span></div>
+    <div class="settings-option" id="optionShare"><span>📤 Compartir App</span><span>Enviar a un amigo</span></div>
+    <div class="settings-option" id="optionSupport"><span>📞 Contactar soporte</span><span>+53 52466224</span></div>
+    <div class="settings-option" id="optionAbout"><span>ℹ️ Acerca de</span><span>Versión 7.0</span></div>
+    <div class="settings-option" id="optionCredits"><span>✨ Créditos</span><span>Gracias a quienes hicieron esto posible</span></div>
+    <div id="appRatingSection" style="display: none; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 20px;">
+        <div style="text-align: center; color: var(--oro-market); font-weight: bold;">⭐ Califica Santiago Market ⭐</div>
+        <div class="app-rating-stars" id="appStars">
+            <span class="app-star" data-value="1">★</span>
+            <span class="app-star" data-value="2">★</span>
+            <span class="app-star" data-value="3">★</span>
+            <span class="app-star" data-value="4">★</span>
+            <span class="app-star" data-value="5">★</span>
+        </div>
+        <div class="rating-message" id="ratingMessage">Toca las estrellas para valorar</div>
+    </div>
+    <button class="close-settings" id="closeSettings">Cerrar</button>
+</div>
+
+<!-- SCRIPTS EN ORDEN CORRECTO -->
+<script src="config.js"></script>
+<script src="sistema_planes.js"></script>
+<script src="supabase.js"></script>
+<script src="core.js"></script>
+<script src="ui.js"></script>
+<script src="events.js"></script>
+
+</body>
+</html>
