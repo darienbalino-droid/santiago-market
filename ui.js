@@ -23,6 +23,53 @@ function esFavorito(negocioId) {
     return obtenerFavoritos().includes(negocioId);
 }
 
+// ========== FUNCIÓN DE UBICACIÓN MEJORADA ==========
+function intentarAbrirMapa(direccion) {
+    if (!direccion || direccion === '' || direccion === 'null') {
+        mostrarToast("❌ Este negocio no tiene dirección registrada");
+        return;
+    }
+    
+    // Limpiar dirección de caracteres raros
+    const direccionLimpia = direccion
+        .replace(/[^\w\sáéíóúñü,.#-]/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    
+    // Múltiples formatos para asegurar que funcione
+    const link = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionLimpia)}`;
+    
+    mostrarToast("🗺️ Abriendo mapa...");
+    setTimeout(() => {
+        window.open(link, '_blank');
+    }, 100);
+}
+
+function obtenerLinkUbicacionSeguro(negocio) {
+    // 1. Si tiene maps guardado y es válido
+    if (negocio.maps && 
+        negocio.maps !== '#' && 
+        negocio.maps !== '' && 
+        negocio.maps !== 'null' && 
+        negocio.maps !== 'undefined' &&
+        negocio.maps.startsWith('http')) {
+        return negocio.maps;
+    }
+    
+    // 2. Si tiene dirección, limpiar y generar link
+    if (negocio.direccion && negocio.direccion !== '' && negocio.direccion !== 'null') {
+        const direccionLimpia = negocio.direccion
+            .replace(/[^\w\sáéíóúñü,.#-]/gi, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        
+        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionLimpia)}`;
+    }
+    
+    // 3. Si no hay nada
+    return null;
+}
+
 // ========== TOP 10 MEJOR VALORADOS ==========
 function obtenerTop10MejorValorados(negocios) {
     const negociosConPromedio = negocios.map(n => {
@@ -119,6 +166,7 @@ function renderizarNegocios() {
         
         const waLink = n.whatsapp ? `https://wa.me/${limpiarNumero(n.whatsapp)}` : '#';
         const numeroLlamar = n.whatsapp || n.telefono || '';
+        const linkUbicacion = obtenerLinkUbicacionSeguro(n);
         
         return `
             <div class="card">
@@ -140,10 +188,10 @@ function renderizarNegocios() {
                     </div>
                     <div class="btn-menu-precios" onclick="abrirModalMenu('${n.id}')">🍽️ MENÚ Y PRECIOS</div>
                     <div class="btn-group">
-                        ${n.whatsapp ? `<a href="${waLink}" target="_blank" rel="noopener noreferrer" class="btn-action">💬 WhatsApp</a>` : ''}
-                        <a href="${n.maps || '#'}" target="_blank" rel="noopener noreferrer" class="btn-maps">📍 Ubicación</a>
-                        ${numeroLlamar ? `<a href="tel:${limpiarNumero(numeroLlamar)}" class="btn-call">📞 Llamar</a>` : ''}
-                        <button class="btn-share" onclick="compartirNegocio('${escapeHtml(n.nombre)}', '${escapeHtml(n.direccion)}', '${n.whatsapp}')">📤 Compartir</button>
+                        ${n.whatsapp ? `<a href="${waLink}" target="_blank" rel="noopener noreferrer" class="btn-action" onclick="event.stopPropagation();">💬 WhatsApp</a>` : ''}
+                        ${linkUbicacion ? `<a href="${linkUbicacion}" target="_blank" rel="noopener noreferrer" class="btn-maps" onclick="event.stopPropagation();">📍 Ver Mapa</a>` : `<button class="btn-maps" onclick="event.stopPropagation(); intentarAbrirMapa('${escapeHtml(n.direccion)}')" style="background:#4285F4;">📍 Buscar Mapa</button>`}
+                        ${numeroLlamar ? `<a href="tel:${limpiarNumero(numeroLlamar)}" class="btn-call" onclick="event.stopPropagation();">📞 Llamar</a>` : ''}
+                        <button class="btn-share" onclick="compartirNegocio('${escapeHtml(n.nombre)}', '${escapeHtml(n.direccion)}', '${n.whatsapp}'); event.stopPropagation();">📤 Compartir</button>
                     </div>
                 </div>
                 ${tieneGaleria ? `<div id="gal-${n.id}" class="galeria"><div class="grid-fotos">${n.galeria.map(img => {
@@ -195,6 +243,7 @@ function abrirModalMenu(id) {
     
     const botonesDiv = document.getElementById('modalBotones');
     const numeroSoporte = "5352466224";
+    const linkUbicacionModal = obtenerLinkUbicacionSeguro(negocio);
     const mensajeWhatsApp = `🎯 SANTIAGO MARKET - PLANES DE DESTACADO 🎯
 
 📌 PLAN BÁSICO - 1000 CUP
@@ -214,7 +263,7 @@ Santiago Market`;
     botonesDiv.innerHTML = `
         <div style="display: flex; gap: 8px; flex-wrap: wrap; width: 100%;">
             ${negocio.whatsapp ? `<a href="https://wa.me/${limpiarNumero(negocio.whatsapp)}?text=Hola%20vi%20tu%20negocio%20${encodeURIComponent(negocio.nombre)}%20en%20Santiago%20Market" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-wa">💬 WhatsApp</a>` : ''}
-            <a href="${negocio.maps || '#'}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-maps">📍 Ubicación</a>
+            ${linkUbicacionModal ? `<a href="${linkUbicacionModal}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-maps">📍 Ver Mapa</a>` : `<button class="modal-btn modal-btn-maps" onclick="intentarAbrirMapa('${escapeHtml(negocio.direccion)}')" style="background:#4285F4;">📍 Buscar Mapa</button>`}
             ${negocio.telefono ? `<a href="tel:${limpiarNumero(negocio.telefono)}" class="modal-btn modal-btn-call">📞 Llamar</a>` : ''}
         </div>
         <a href="https://wa.me/${numeroSoporte}?text=${encodeURIComponent(mensajeWhatsApp)}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-destacar">🔥 QUIERO DESTACAR MI NEGOCIO</a>
