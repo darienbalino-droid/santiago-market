@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#28a745">
-    <title>Santiago de las Vegas Market v7.0</title>
+    <title>Santiago de las Vegas Market v8.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -19,6 +19,22 @@
     </style>
 </head>
 <body>
+<script>
+    // ========== FORZAR MODO OSCURO INMEDIATAMENTE ==========
+    (function() {
+        const temaGuardado = localStorage.getItem('theme');
+        if (temaGuardado === 'light') {
+            document.body.classList.remove('dark-mode');
+            document.body.style.backgroundColor = '#ffffff';
+        } else {
+            document.body.classList.add('dark-mode');
+            document.body.style.backgroundColor = '#0f172a';
+            if (!temaGuardado) {
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+    })();
+</script>
 
 <!-- SCRIPT PARA FORZAR RECARGA AL VOLVER DEL FORMULARIO -->
 <script>
@@ -53,7 +69,7 @@
         </div>
         <div class="progress-text" id="progressText">Cargando 0%</div>
     </div>
-    <div class="version-tag">v7.0 | SANTIAGO MARKET</div>
+    <div class="version-tag">v8.0 | SANTIAGO MARKET</div>
 </div>
 
 <div id="mainContent" style="display:none;">
@@ -80,6 +96,8 @@
     <div class="filters-container">
         <div class="filters-scroll">
             <button class="filter-chip active" data-cat="todos">📱 Todos</button>
+            <button class="filter-chip" data-cat="favoritos">❤️ Mis favoritos</button>
+            <button class="filter-chip" data-cat="top10">🏆 Top 10</button>
             <button class="filter-chip" data-cat="mypime">1. Mypimes</button>
             <button class="filter-chip" data-cat="moda">2. Ropa y Moda</button>
             <button class="filter-chip" data-cat="ferreteria">3. Ferreterías</button>
@@ -98,7 +116,7 @@
     <div style="text-align: center; padding: 16px;">
         <a href="formulario.html" target="_blank" class="inscribir-btn" style="text-decoration: none; display: inline-block; margin-bottom: 12px; background: linear-gradient(135deg, #28a745, #1f8b3a);">📝 INSCRIBIR MI NEGOCIO</a>
         <a href="panel.html" target="_blank" class="inscribir-btn" style="text-decoration: none; display: inline-block; background: linear-gradient(135deg, #f1c40f, #e67e22);">🔧 EDITAR MI NEGOCIO</a>
-        <p style="font-size: 9px; color: var(--texto-gris-oscuro); margin-top: 12px;">SANTIAGO MARKET v7.0 | BY DARIEN TATTOO</p>
+        <p style="font-size: 9px; color: var(--texto-gris-oscuro); margin-top: 12px;">SANTIAGO MARKET v8.0 | BY DARIEN TATTOO</p>
     </div> 
 
     <footer>
@@ -182,7 +200,7 @@
     <div class="settings-option" id="optionReset"><span>🔄 Reiniciar valoraciones</span><span>Todas las estrellas en 0</span></div>
     <div class="settings-option" id="optionShare"><span>📤 Compartir App</span><span>Enviar a un amigo</span></div>
     <div class="settings-option" id="optionSupport"><span>📞 Contactar soporte</span><span>+53 52466224</span></div>
-    <div class="settings-option" id="optionAbout"><span>ℹ️ Acerca de</span><span>Versión 7.0</span></div>
+    <div class="settings-option" id="optionAbout"><span>ℹ️ Acerca de</span><span>Versión 8.0</span></div>
     <div class="settings-option" id="optionCredits"><span>✨ Créditos</span><span>Gracias a quienes hicieron esto posible</span></div>
     <div id="appRatingSection" style="display: none; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 20px;">
         <div style="text-align: center; color: var(--oro-market); font-weight: bold;">⭐ Califica Santiago Market ⭐</div>
@@ -207,4 +225,4 @@
 <script src="events.js"></script>
 
 </body>
-</html>
+    </html>
