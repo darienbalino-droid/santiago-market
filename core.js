@@ -1,5 +1,6 @@
 // ========== VARIABLES GLOBALES ==========
 let todosLosNegocios = [];
+let datosCargados = false;
 
 // ========== LIMPIAR NÚMEROS ==========
 function limpiarNumero(numero) {
@@ -16,6 +17,40 @@ function escapeHtml(str) {
         if (m === '>') return '&gt;';
         return m;
     });
+}
+
+// ========== CACHÉ LOCAL (para conexión lenta) ==========
+function guardarNegociosEnCache(negocios) {
+    try {
+        const cacheData = {
+            timestamp: Date.now(),
+            negocios: negocios
+        };
+        localStorage.setItem('santiago_market_cache', JSON.stringify(cacheData));
+        console.log("📦 Negocios guardados en caché local");
+    } catch (e) {
+        console.warn("No se pudo guardar caché:", e);
+    }
+}
+
+function cargarNegociosDesdeCache() {
+    try {
+        const cacheData = localStorage.getItem('santiago_market_cache');
+        if (!cacheData) return null;
+        
+        const cache = JSON.parse(cacheData);
+        const tiempoTranscurrido = Date.now() - cache.timestamp;
+        const UNA_HORA = 60 * 60 * 1000; // 1 hora de caché
+        
+        // Si tiene menos de 1 hora, usar caché
+        if (tiempoTranscurrido < UNA_HORA) {
+            console.log("📦 Usando caché local (evitando recarga)");
+            return cache.negocios;
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
 }
 
 // ========== RATING ==========
@@ -152,30 +187,76 @@ function limpiarCategoria(cat) {
     return "todos";
 }
 
-// ========== INICIALIZACIÓN ==========
+// ========== INICIALIZACIÓN CON CACHÉ ==========
+async function cargarNegociosInteligente() {
+    // PASO 1: Intentar cargar desde caché local (RÁPIDO)
+    const negociosCache = cargarNegociosDesdeCache();
+    
+    if (negociosCache && negociosCache.length > 0) {
+        todosLosNegocios = negociosCache;
+        if (typeof renderizarNegocios === 'function') renderizarNegocios();
+        mostrarToast("📦 Cargado desde caché (rápido)");
+        datosCargados = true;
+    }
+    
+    // PASO 2: En segundo plano, actualizar desde Supabase
+    if (typeof cargarNegociosDesdeSupabase === 'function') {
+        try {
+            const negociosNuevos = await cargarNegociosDesdeSupabase();
+            if (negociosNuevos && negociosNuevos.length > 0) {
+                todosLosNegocios = negociosNuevos;
+                guardarNegociosEnCache(negociosNuevos);
+                if (typeof renderizarNegocios === 'function') renderizarNegocios();
+                if (datosCargados) {
+                    mostrarToast("🔄 Negocios actualizados");
+                } else {
+                    mostrarToast(`✅ ${negociosNuevos.length} negocios cargados`);
+                }
+                datosCargados = true;
+            }
+        } catch (error) {
+            console.error("Error actualizando desde Supabase:", error);
+            if (!datosCargados) {
+                mostrarToast("⚠️ Conexión lenta, usando datos locales");
+            }
+        }
+    }
+}
+
 async function inicializarApp() {
     try {
-        console.log("🚀 Iniciando Santiago Market...");
+        console.log("🚀 Iniciando Santiago Market v8.0...");
+        
+        // Mostrar splash y progreso
         const progressFill = document.getElementById('progressFill');
         if (progressFill) progressFill.style.width = "30%";
-
-        if (typeof cargarNegociosDesdeSupabase === 'function') {
-            todosLosNegocios = await cargarNegociosDesdeSupabase();
-        }
-
+        
+        // Cargar negocios (con caché primero)
+        await cargarNegociosInteligente();
+        
         if (progressFill) progressFill.style.width = "100%";
-        if (typeof renderizarNegocios === 'function') renderizarNegocios();
-
+        
+        // Ocultar splash y mostrar app
         setTimeout(() => {
             const splash = document.getElementById('splash');
             const main = document.getElementById('mainContent');
             if (splash) splash.style.display = 'none';
             if (main) main.style.display = 'block';
         }, 500);
+        
     } catch (error) {
         console.error("Error al arrancar la App:", error);
-        mostrarToast("❌ Error al conectar con la base de datos");
+        mostrarToast("❌ Error al conectar, pero puedes ver negocios guardados");
+        
+        // Si hay error, igual mostrar la app con lo que haya en caché
+        setTimeout(() => {
+            const splash = document.getElementById('splash');
+            const main = document.getElementById('mainContent');
+            if (splash) splash.style.display = 'none';
+            if (main) main.style.display = 'block';
+        }, 500);
     }
 }
 
+// Iniciar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', inicializarApp);
