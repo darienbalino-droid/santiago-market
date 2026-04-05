@@ -42,7 +42,6 @@ function cargarNegociosDesdeCache() {
         const tiempoTranscurrido = Date.now() - cache.timestamp;
         const UNA_HORA = 60 * 60 * 1000; // 1 hora de caché
         
-        // Si tiene menos de 1 hora, usar caché
         if (tiempoTranscurrido < UNA_HORA) {
             console.log("📦 Usando caché local (evitando recarga)");
             return cache.negocios;
@@ -197,6 +196,11 @@ async function cargarNegociosInteligente() {
         if (typeof renderizarNegocios === 'function') renderizarNegocios();
         mostrarToast("📦 Cargado desde caché (rápido)");
         datosCargados = true;
+        
+        // Actualizar contador para fase de lanzamiento
+        if (typeof actualizarTotalTiendas === 'function') {
+            actualizarTotalTiendas(todosLosNegocios.length);
+        }
     }
     
     // PASO 2: En segundo plano, actualizar desde Supabase
@@ -213,6 +217,11 @@ async function cargarNegociosInteligente() {
                     mostrarToast(`✅ ${negociosNuevos.length} negocios cargados`);
                 }
                 datosCargados = true;
+                
+                // Actualizar contador para fase de lanzamiento
+                if (typeof actualizarTotalTiendas === 'function') {
+                    actualizarTotalTiendas(todosLosNegocios.length);
+                }
             }
         } catch (error) {
             console.error("Error actualizando desde Supabase:", error);
