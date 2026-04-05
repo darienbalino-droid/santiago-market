@@ -1,9 +1,10 @@
 // ========== SISTEMA DE PLANES Y LÍMITES ==========
 // Versión: 7.0
 // Autor: DARIEN TATTOO
+// CORREGIDO - Planes unificados
 
 const PLANES = {
-    GRATIS_PRUEBA: {
+    PRUEBA_GRATIS: {
         nombre: "Prueba Gratis",
         duracion_dias: 20,
         max_productos: 7,
@@ -16,7 +17,7 @@ const PLANES = {
         nombre: "Plan Básico",
         duracion_dias: 30,
         max_productos: 7,
-        max_fotos: 0,
+        max_fotos: 1,
         puede_editar: true,
         destacado: true,
         destacado_gratis_dias: 15,
@@ -26,7 +27,7 @@ const PLANES = {
         nombre: "Plan Premium",
         duracion_dias: 30,
         max_productos: 15,
-        max_fotos: 0,
+        max_fotos: 3,
         puede_editar: true,
         destacado: true,
         destacado_gratis_dias: 0,
@@ -56,7 +57,7 @@ function guardarFechaRegistro(negocioId) {
 
 function obtenerPlan(negocioId) {
     const fechaRegistro = localStorage.getItem(`fecha_registro_${negocioId}`);
-    if (!fechaRegistro) return PLANES.GRATIS_PRUEBA;
+    if (!fechaRegistro) return PLANES.PRUEBA_GRATIS;
     
     const fechaRegistroDate = new Date(fechaRegistro);
     const hoy = new Date();
@@ -83,10 +84,10 @@ function obtenerPlan(negocioId) {
     }
     
     if (diasTranscurridos < 20) {
-        return PLANES.GRATIS_PRUEBA;
+        return PLANES.PRUEBA_GRATIS;
     }
     
-    return PLANES.GRATIS_PRUEBA;
+    return PLANES.PRUEBA_GRATIS;
 }
 
 function obtenerPlanStorage(negocioId) {
@@ -102,7 +103,7 @@ function obtenerPlanStorage(negocioId) {
         const fechaPago = new Date(localStorage.getItem(`fecha_pago_${negocioId}`));
         const diasRestantes = 30 - Math.floor((hoy - fechaPago) / (1000 * 60 * 60 * 24));
         if (diasRestantes > 0) {
-            return { nombre: "Plan Básico", diasRestantes, puedeEditar: true, maxProductos: 7, maxFotos: 0, destacado: true, destacadoGratisDias: 15 };
+            return { nombre: "Plan Básico", diasRestantes, puedeEditar: true, maxProductos: 7, maxFotos: 1, destacado: true, destacadoGratisDias: 15 };
         }
     }
     
@@ -110,7 +111,7 @@ function obtenerPlanStorage(negocioId) {
         const fechaPago = new Date(localStorage.getItem(`fecha_pago_${negocioId}`));
         const diasRestantes = 30 - Math.floor((hoy - fechaPago) / (1000 * 60 * 60 * 24));
         if (diasRestantes > 0) {
-            return { nombre: "Plan Premium", diasRestantes, puedeEditar: true, maxProductos: 15, maxFotos: 0, destacado: true };
+            return { nombre: "Plan Premium", diasRestantes, puedeEditar: true, maxProductos: 15, maxFotos: 3, destacado: true };
         }
     }
     
@@ -180,14 +181,15 @@ function obtenerLimites(negocioId) {
 
 function renovarPlan(negocioId, tipo) {
     const planesMap = {
-        basico: { nombre: "Básico", precio: "500 CUP", duracion: 30, maxProductos: 7, maxFotos: 0 },
-        premium: { nombre: "Premium", precio: "1500 CUP", duracion: 30, maxProductos: 15, maxFotos: 0 }
+        basico: { nombre: "Básico", precio: "1000 CUP", duracion: 30, maxProductos: 7, maxFotos: 1 },
+        premium: { nombre: "Premium", precio: "2000 CUP", duracion: 30, maxProductos: 15, maxFotos: 3 },
+        exito_local: { nombre: "Éxito Local", precio: "3000 CUP", duracion: 40, maxProductos: 15, maxFotos: 10 }
     };
     
     const plan = planesMap[tipo];
     if (!plan) return;
     
-    if (confirm(`¿Renovar Plan ${plan.nombre} por ${plan.precio}? (${plan.duracion} días, ${plan.maxProductos} productos)`)) {
+    if (confirm(`¿Renovar Plan ${plan.nombre} por ${plan.precio}? (${plan.duracion} días, ${plan.maxProductos} productos, ${plan.maxFotos} fotos)`)) {
         localStorage.setItem(`plan_${negocioId}`, tipo);
         localStorage.setItem(`fecha_pago_${negocioId}`, new Date().toISOString());
         if (typeof mostrarToast === 'function') mostrarToast(`✅ Plan ${plan.nombre} activado por ${plan.duracion} días`);
