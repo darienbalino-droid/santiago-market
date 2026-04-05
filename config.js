@@ -1,9 +1,9 @@
 // ========== CONFIGURACIÓN CENTRAL DE SANTIAGO MARKET ==========
-// Versión: 7.0
+// Versión: 8.0
 // Autor: DARIEN TATTOO
 
 const CONFIG = {
-    VERSION: "v7.0",
+    VERSION: "v8.0",
     AUTOR: "DARIEN TATTOO",
     
     URL_GOOGLE: "https://script.google.com/macros/s/AKfycbyGjQj08RP1XegmezDRrOfYQrgc2q3Duao2u921M5JCWwwAG6wyySfQoTZo9J7lq2Zu/exec",
@@ -11,10 +11,10 @@ const CONFIG = {
     WHATSAPP_SOPORTE: "5352466224",
     NUMERO_SOPORTE: "+53 52466224",
     
-    MAX_FOTOS_POR_NEGOCIO: 5,
-    MAX_PRODUCTOS_POR_NEGOCIO: 10,
-    CALIDAD_COMPRESION: 0.7,
-    ANCHO_MAXIMO_FOTO: 800,
+    MAX_FOTOS_POR_NEGOCIO: 10,
+    MAX_PRODUCTOS_POR_NEGOCIO: 15,
+    CALIDAD_COMPRESION: 0.5,
+    ANCHO_MAXIMO_FOTO: 600,
     
     CATEGORIAS: [
         { id: "todos", nombre: "📱 Todos", icono: "📱" },
@@ -28,16 +28,58 @@ const CONFIG = {
         { id: "ofertas", nombre: "🔥 Ofertas del día", icono: "🔥" }
     ],
     
+    // ========== PLANES DEFINITIVOS ==========
     PLANES: [
-        { nombre: "GRATIS", precio: "0 CUP", duracion: "Ilimitado", badge: "🆓", fotos: 5, destacado: false },
-        { nombre: "DESTACADO", precio: "500 CUP", duracion: "30 días", badge: "🔥", fotos: 20, destacado: true },
-        { nombre: "PREMIUM", precio: "1500 CUP", duracion: "30 días", badge: "👑", fotos: 100, destacado: true }
+        { 
+            nombre: "GRATIS", 
+            precio: "0 CUP", 
+            duracion: "25 días", 
+            productos: 7, 
+            fotos: 5,
+            cambiar_fotos_dia: 1,
+            destacado: false,
+            badge: "🆓"
+        },
+        { 
+            nombre: "BÁSICO", 
+            precio: "1000 CUP", 
+            duracion: "30 días", 
+            productos: 7, 
+            fotos: 6,
+            cambiar_fotos_dia: 3,
+            destacado: true,
+            destacado_dias: 15,
+            badge: "🔥"
+        },
+        { 
+            nombre: "PREMIUM", 
+            precio: "2000 CUP", 
+            duracion: "30 días", 
+            productos: 15, 
+            fotos: 8,
+            cambiar_fotos_dia: 5,
+            destacado: true,
+            destacado_dias: 30,
+            badge: "👑"
+        },
+        { 
+            nombre: "ÉXITO LOCAL", 
+            precio: "3000 CUP", 
+            duracion: "40 días", 
+            productos: 15, 
+            fotos: 10,
+            cambiar_fotos_dia: 10,
+            destacado: true,
+            destacado_dias: 40,
+            badge: "✨",
+            exclusivo: true,
+            cupos: 5
+        }
     ],
     
     NEGOCIOS_LOCALES: []
 };
 
-// ========== ÚNICA DECLARACIÓN DE IMAGEN POR DEFECTO ==========
 const IMAGEN_POR_DEFECTO = "https://i.postimg.cc/RZTS3mg7/1774530222644.png";
 
 if (typeof window !== 'undefined') {
