@@ -1,5 +1,45 @@
 let currentCategory = "todos";
 
+// ========== SISTEMA DE FAVORITOS ==========
+function obtenerFavoritos() {
+    return JSON.parse(localStorage.getItem('mis_favoritos') || '[]');
+}
+
+function toggleFavorito(negocioId, event) {
+    if (event) event.stopPropagation();
+    let favoritos = obtenerFavoritos();
+    if (favoritos.includes(negocioId)) {
+        favoritos = favoritos.filter(id => id !== negocioId);
+        mostrarToast('❤️ Eliminado de favoritos');
+    } else {
+        favoritos.push(negocioId);
+        mostrarToast('⭐ Agregado a favoritos');
+    }
+    localStorage.setItem('mis_favoritos', JSON.stringify(favoritos));
+    renderizarNegocios();
+}
+
+function esFavorito(negocioId) {
+    return obtenerFavoritos().includes(negocioId);
+}
+
+// ========== TOP 10 MEJOR VALORADOS ==========
+function obtenerTop10MejorValorados(negocios) {
+    const negociosConPromedio = negocios.map(n => {
+        const rating = obtenerRating(n.id);
+        return {
+            ...n,
+            promedio: rating.promedio || 0,
+            totalVotos: rating.total || 0
+        };
+    });
+    
+    const conVotos = negociosConPromedio.filter(n => n.totalVotos > 0);
+    conVotos.sort((a, b) => b.promedio - a.promedio);
+    
+    return conVotos.slice(0, 10);
+}
+
 function resaltarTexto(texto, busqueda) {
     if (!busqueda || !texto) return escapeHtml(texto);
     const regex = new RegExp(`(${busqueda.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
@@ -14,8 +54,24 @@ function renderizarNegocios() {
         return;
     }
     
-    let filtered = todosLosNegocios;
-    if (currentCategory !== "todos") {
+    let filtered = [...todosLosNegocios];
+    
+    if (currentCategory === "top10") {
+        filtered = obtenerTop10MejorValorados(todosLosNegocios);
+        if (filtered.length === 0) {
+            grid.innerHTML = '<div class="no-results">⭐ Aún no hay valoraciones.<br>¡Sé el primero en calificar negocios!</div>';
+            return;
+        }
+    }
+    else if (currentCategory === "favoritos") {
+        const favoritosIds = obtenerFavoritos();
+        filtered = filtered.filter(n => favoritosIds.includes(n.id));
+        if (filtered.length === 0) {
+            grid.innerHTML = '<div class="no-results">❤️ No tienes favoritos aún.<br>Presiona el corazón en cualquier negocio para guardarlo aquí.</div>';
+            return;
+        }
+    }
+    else if (currentCategory !== "todos") {
         if (currentCategory === "ofertas") filtered = filtered.filter(n => n.oferta === true);
         else if (currentCategory === "otros") filtered = filtered.filter(n => !['restaurante','ferreteria','taller','ventacasa','moda','mypime'].includes(n.categoria));
         else filtered = filtered.filter(n => n.categoria === currentCategory);
@@ -51,17 +107,27 @@ function renderizarNegocios() {
         if (!fotoPrincipal) fotoPrincipal = IMAGEN_POR_DEFECTO;
         const tieneGaleria = n.galeria?.length > 0;
         const esOferta = n.oferta === true;
+        const esFav = esFavorito(n.id);
+        
         let estrellasHtml = '';
         for (let i = 1; i <= 5; i++) {
             const isActive = i <= Math.round(rating.promedio);
             estrellasHtml += `<span class="star ${isActive ? 'active' : ''}" onclick="votarEstrella('${n.id}', ${i}, event)">★</span>`;
         }
+        
+        const promedioTexto = rating.total > 0 ? `⭐ ${rating.promedio.toFixed(1)} (${rating.total})` : '⭐ Sin valorar';
+        
         const waLink = n.whatsapp ? `https://wa.me/${limpiarNumero(n.whatsapp)}` : '#';
+        const numeroLlamar = n.whatsapp || n.telefono || '';
+        
         return `
             <div class="card">
                 <div style="position: relative;">
                     <img loading="lazy" src="${fotoPrincipal}" class="card-img" onclick="toggleGaleria('gal-${n.id}')" onerror="this.onerror=null; this.src='${IMAGEN_POR_DEFECTO}';">
                     <div class="badge">${esOferta ? '🔥 OFERTA' : catLabel}</div>
+                    <div class="favorito-corazon" onclick="toggleFavorito('${n.id}', event)">
+                        ${esFav ? '❤️' : '🤍'}
+                    </div>
                 </div>
                 <div class="card-content">
                     <div class="card-title">${resaltarTexto(n.nombre, busqueda)} ${esOferta ? '<span style="color:#f1c40f;">🔥</span>' : ''}</div>
@@ -70,13 +136,13 @@ function renderizarNegocios() {
                     <div class="horario" onclick="mostrarHorario('${escapeHtml(n.horario || 'Consultar')}')">🕒 ${escapeHtml(n.horario || 'Consultar')}</div>
                     <div class="rating-container">
                         <div class="stars" onclick="event.stopPropagation()">${estrellasHtml}</div>
-                        <div class="rating-average">(${rating.total || 0})</div>
+                        <div class="rating-average">${promedioTexto}</div>
                     </div>
                     <div class="btn-menu-precios" onclick="abrirModalMenu('${n.id}')">🍽️ MENÚ Y PRECIOS</div>
                     <div class="btn-group">
                         ${n.whatsapp ? `<a href="${waLink}" target="_blank" rel="noopener noreferrer" class="btn-action">💬 WhatsApp</a>` : ''}
-                        <a href="${n.maps || '#'}" target="_blank" rel="noopener noreferrer" class="btn-maps">🗺️ GPS</a>
-                        ${n.telefono ? `<a href="tel:${limpiarNumero(n.telefono)}" class="btn-call">📞 Llamar</a>` : ''}
+                        <a href="${n.maps || '#'}" target="_blank" rel="noopener noreferrer" class="btn-maps">📍 Ubicación</a>
+                        ${numeroLlamar ? `<a href="tel:${limpiarNumero(numeroLlamar)}" class="btn-call">📞 Llamar</a>` : ''}
                         <button class="btn-share" onclick="compartirNegocio('${escapeHtml(n.nombre)}', '${escapeHtml(n.direccion)}', '${n.whatsapp}')">📤 Compartir</button>
                     </div>
                 </div>
@@ -95,7 +161,11 @@ function filtrarPorCategoria(categoria, elemento) {
     document.querySelectorAll('.filter-chip').forEach(chip => chip.classList.remove('active'));
     if (elemento) elemento.classList.add('active');
     renderizarNegocios();
-    mostrarToast('Categoría: ' + (elemento ? elemento.innerText : categoria));
+    let mensaje = '';
+    if (categoria === 'favoritos') mensaje = '❤️ Mostrando tus favoritos';
+    else if (categoria === 'top10') mensaje = '🏆 Top 10 mejor valorados';
+    else mensaje = 'Categoría: ' + (elemento ? elemento.innerText : categoria);
+    mostrarToast(mensaje);
 }
 
 function filtrarNegocios() { renderizarNegocios(); }
@@ -144,7 +214,7 @@ Santiago Market`;
     botonesDiv.innerHTML = `
         <div style="display: flex; gap: 8px; flex-wrap: wrap; width: 100%;">
             ${negocio.whatsapp ? `<a href="https://wa.me/${limpiarNumero(negocio.whatsapp)}?text=Hola%20vi%20tu%20negocio%20${encodeURIComponent(negocio.nombre)}%20en%20Santiago%20Market" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-wa">💬 WhatsApp</a>` : ''}
-            <a href="${negocio.maps || '#'}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-maps">🗺️ GPS</a>
+            <a href="${negocio.maps || '#'}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-maps">📍 Ubicación</a>
             ${negocio.telefono ? `<a href="tel:${limpiarNumero(negocio.telefono)}" class="modal-btn modal-btn-call">📞 Llamar</a>` : ''}
         </div>
         <a href="https://wa.me/${numeroSoporte}?text=${encodeURIComponent(mensajeWhatsApp)}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-destacar">🔥 QUIERO DESTACAR MI NEGOCIO</a>
@@ -160,7 +230,6 @@ Santiago Market`;
     document.getElementById('modalMenu').style.display = 'flex';
 }
 
-// ✅ FUNCIÓN AGREGADA - Cierra el modal de menú
 function cerrarModalMenu() { 
     const modal = document.getElementById('modalMenu');
     if (modal) modal.style.display = 'none'; 
