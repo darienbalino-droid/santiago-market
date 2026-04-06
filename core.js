@@ -19,37 +19,17 @@ function escapeHtml(str) {
     });
 }
 
-// ========== CACHÉ LOCAL (para conexión lenta) ==========
+// ========== CACHÉ DESACTIVADO (siempre datos frescos desde Supabase) ==========
 function guardarNegociosEnCache(negocios) {
-    try {
-        const cacheData = {
-            timestamp: Date.now(),
-            negocios: negocios
-        };
-        localStorage.setItem('santiago_market_cache', JSON.stringify(cacheData));
-        console.log("📦 Negocios guardados en caché local");
-    } catch (e) {
-        console.warn("No se pudo guardar caché:", e);
-    }
+    // CACHÉ DESACTIVADO - No guardamos nada en local
+    console.log("🗑️ Caché desactivado - no se guardan datos locales");
+    return;
 }
 
 function cargarNegociosDesdeCache() {
-    try {
-        const cacheData = localStorage.getItem('santiago_market_cache');
-        if (!cacheData) return null;
-        
-        const cache = JSON.parse(cacheData);
-        const tiempoTranscurrido = Date.now() - cache.timestamp;
-        const UNA_HORA = 60 * 60 * 1000; // 1 hora de caché
-        
-        if (tiempoTranscurrido < UNA_HORA) {
-            console.log("📦 Usando caché local (evitando recarga)");
-            return cache.negocios;
-        }
-        return null;
-    } catch (e) {
-        return null;
-    }
+    // CACHÉ DESACTIVADO - Siempre carga desde Supabase
+    console.log("🗑️ Caché desactivado - cargando datos frescos desde Supabase...");
+    return null;
 }
 
 // ========== RATING ==========
@@ -186,47 +166,35 @@ function limpiarCategoria(cat) {
     return "todos";
 }
 
-// ========== INICIALIZACIÓN CON CACHÉ ==========
+// ========== INICIALIZACIÓN SIN CACHÉ (siempre desde Supabase) ==========
 async function cargarNegociosInteligente() {
-    // PASO 1: Intentar cargar desde caché local (RÁPIDO)
-    const negociosCache = cargarNegociosDesdeCache();
+    console.log("🔄 Cargando datos frescos desde Supabase (caché desactivado)...");
     
-    if (negociosCache && negociosCache.length > 0) {
-        todosLosNegocios = negociosCache;
-        if (typeof renderizarNegocios === 'function') renderizarNegocios();
-        mostrarToast("📦 Cargado desde caché (rápido)");
-        datosCargados = true;
-        
-        // Actualizar contador para fase de lanzamiento
-        if (typeof actualizarTotalTiendas === 'function') {
-            actualizarTotalTiendas(todosLosNegocios.length);
-        }
-    }
-    
-    // PASO 2: En segundo plano, actualizar desde Supabase
+    // Cargar directamente desde Supabase
     if (typeof cargarNegociosDesdeSupabase === 'function') {
         try {
             const negociosNuevos = await cargarNegociosDesdeSupabase();
             if (negociosNuevos && negociosNuevos.length > 0) {
                 todosLosNegocios = negociosNuevos;
-                guardarNegociosEnCache(negociosNuevos);
                 if (typeof renderizarNegocios === 'function') renderizarNegocios();
-                if (datosCargados) {
-                    mostrarToast("🔄 Negocios actualizados");
-                } else {
-                    mostrarToast(`✅ ${negociosNuevos.length} negocios cargados`);
-                }
+                mostrarToast(`✅ ${negociosNuevos.length} negocios cargados`);
                 datosCargados = true;
                 
                 // Actualizar contador para fase de lanzamiento
                 if (typeof actualizarTotalTiendas === 'function') {
                     actualizarTotalTiendas(todosLosNegocios.length);
                 }
+            } else {
+                todosLosNegocios = [];
+                if (typeof renderizarNegocios === 'function') renderizarNegocios();
+                datosCargados = true;
             }
         } catch (error) {
-            console.error("Error actualizando desde Supabase:", error);
+            console.error("Error cargando desde Supabase:", error);
+            mostrarToast("⚠️ Error de conexión, intenta de nuevo");
             if (!datosCargados) {
-                mostrarToast("⚠️ Conexión lenta, usando datos locales");
+                todosLosNegocios = [];
+                if (typeof renderizarNegocios === 'function') renderizarNegocios();
             }
         }
     }
@@ -234,13 +202,18 @@ async function cargarNegociosInteligente() {
 
 async function inicializarApp() {
     try {
-        console.log("🚀 Iniciando Santiago Market v8.0...");
+        console.log("🚀 Iniciando Santiago Market v8.0 (sin caché)...");
         
         // Mostrar splash y progreso
         const progressFill = document.getElementById('progressFill');
         if (progressFill) progressFill.style.width = "30%";
         
-        // Cargar negocios (con caché primero)
+        // Limpiar cualquier caché residual
+        localStorage.removeItem('santiago_market_cache');
+        localStorage.removeItem('santiago_market_cache_v2');
+        console.log("🗑️ Caché residual limpiado");
+        
+        // Cargar negocios desde Supabase
         await cargarNegociosInteligente();
         
         if (progressFill) progressFill.style.width = "100%";
@@ -255,9 +228,8 @@ async function inicializarApp() {
         
     } catch (error) {
         console.error("Error al arrancar la App:", error);
-        mostrarToast("❌ Error al conectar, pero puedes ver negocios guardados");
+        mostrarToast("❌ Error al conectar, revisa tu conexión");
         
-        // Si hay error, igual mostrar la app con lo que haya en caché
         setTimeout(() => {
             const splash = document.getElementById('splash');
             const main = document.getElementById('mainContent');
