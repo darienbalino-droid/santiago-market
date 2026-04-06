@@ -30,13 +30,11 @@ function intentarAbrirMapa(direccion) {
         return;
     }
     
-    // Limpiar dirección de caracteres raros
     const direccionLimpia = direccion
         .replace(/[^\w\sáéíóúñü,.#-]/gi, ' ')
         .replace(/\s+/g, ' ')
         .trim();
     
-    // Múltiples formatos para asegurar que funcione
     const link = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionLimpia)}`;
     
     mostrarToast("🗺️ Abriendo mapa...");
@@ -46,7 +44,6 @@ function intentarAbrirMapa(direccion) {
 }
 
 function obtenerLinkUbicacionSeguro(negocio) {
-    // 1. Si tiene maps guardado y es válido
     if (negocio.maps && 
         negocio.maps !== '#' && 
         negocio.maps !== '' && 
@@ -56,7 +53,6 @@ function obtenerLinkUbicacionSeguro(negocio) {
         return negocio.maps;
     }
     
-    // 2. Si tiene dirección, limpiar y generar link
     if (negocio.direccion && negocio.direccion !== '' && negocio.direccion !== 'null') {
         const direccionLimpia = negocio.direccion
             .replace(/[^\w\sáéíóúñü,.#-]/gi, ' ')
@@ -66,7 +62,6 @@ function obtenerLinkUbicacionSeguro(negocio) {
         return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccionLimpia)}`;
     }
     
-    // 3. Si no hay nada
     return null;
 }
 
@@ -147,11 +142,22 @@ function renderizarNegocios() {
     grid.innerHTML = filtered.map(n => {
         const rating = obtenerRating(n.id);
         const catLabel = { restaurante: '🍽️ RESTAURANTE', ferreteria: '🔧 FERRETERÍA', taller: '📱 TALLER', ventacasa: '🏠 VENTA DE CASA', moda: '👕 MODA', mypime: '🏪 MYPIME', otros: '📦 OTROS' }[n.categoria] || '🏪 NEGOCIO';
-        let fotoPrincipal = n.oferta && n.foto_dia ? n.foto_dia : (n.imagen || n.foto1 || '');
-        if (fotoPrincipal.includes("postimg.cc") && !fotoPrincipal.includes("i.postimg.cc")) {
+        
+        // ========== FOTO PRINCIPAL ==========
+        let fotoPrincipal = n.foto1 || n.foto2 || n.foto3 || n.foto4 || n.foto5 || n.foto6 || n.foto7 || n.foto8 || n.foto9 || n.foto10 || n.imagen || '';
+        
+        if (!fotoPrincipal && n.galeria && n.galeria.length > 0) {
+            fotoPrincipal = n.galeria[0];
+        }
+        
+        if (fotoPrincipal && fotoPrincipal.includes("postimg.cc") && !fotoPrincipal.includes("i.postimg.cc")) {
             fotoPrincipal = fotoPrincipal.replace("postimg.cc", "i.postimg.cc") + ".jpg";
         }
-        if (!fotoPrincipal) fotoPrincipal = IMAGEN_POR_DEFECTO;
+        
+        if (!fotoPrincipal || fotoPrincipal === '' || fotoPrincipal === 'null') {
+            fotoPrincipal = IMAGEN_POR_DEFECTO;
+        }
+        
         const tieneGaleria = n.galeria?.length > 0;
         const esOferta = n.oferta === true;
         const esFav = esFavorito(n.id);
@@ -300,3 +306,11 @@ function compartirNegocio(nombre, direccion, whatsapp) {
 }
 
 function mostrarHorario(horario) { mostrarToast(`🕒 Horario: ${horario}`); }
+
+// ========== LIMPIAR CACHÉ AL INICIAR ==========
+// Forzar recarga de datos sin caché
+if (typeof cargarNegociosInteligente === 'function') {
+    // Limpiar caché local para forzar recarga
+    localStorage.removeItem('santiago_market_cache');
+    console.log("🗑️ Caché limpiado, recargando datos frescos...");
+        }
