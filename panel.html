@@ -153,6 +153,12 @@
             color: #94a3b8;
             margin-top: 8px;
         }
+        .btn-galeria {
+            background: #4285F4;
+            margin-top: 5px;
+            padding: 12px;
+            font-size: 18px;
+        }
         @media (max-width: 550px) {
             body { padding: 15px; }
             .container { padding: 25px 20px; }
@@ -170,6 +176,7 @@
         const SUPABASE_URL = "https://kospieqzqwbjkjljchlu.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_wlulCYK54_osTvkhq5oNuA_PtRS5apR";
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const IMAGEN_POR_DEFECTO = "https://i.postimg.cc/RZTS3mg7/1774530222644.png";
 
         function comprimirFoto(file) {
             return new Promise((resolve) => {
@@ -233,6 +240,12 @@
                 <input type="text" id="horario" placeholder="Ej: Lunes a Domingo 9am - 9pm">
             </div>
             
+            <div class="campo">
+                <label>📍 DIRECCIÓN (para el mapa)</label>
+                <input type="text" id="direccion" placeholder="Ej: Calle 5ta #123, Santiago de las Vegas">
+                <p class="helper-text">✏️ Cambia la dirección y el mapa se actualizará automáticamente</p>
+            </div>
+            
             <button id="btnGuardar" onclick="guardarCambios()">💾 GUARDAR TODOS LOS CAMBIOS</button>
             <button class="btn-activar" onclick="activarConCodigo()">🎟️ ACTIVAR PLAN CON CÓDIGO</button>
             <button class="btn-cerrar" onclick="cerrarSesion()">🔒 Cerrar sesión</button>
@@ -264,6 +277,16 @@
             div.classList.add('info-mensaje');
             document.querySelector('.container').appendChild(div);
             setTimeout(() => div.remove(), 4000);
+        }
+
+        function contarFotosActuales() {
+            let count = 0;
+            for (let i = 1; i <= 10; i++) {
+                if (negocioDataActual && negocioDataActual[`foto${i}`] && negocioDataActual[`foto${i}`] !== "") {
+                    count++;
+                }
+            }
+            return count;
         }
 
         function obtenerPlanStorageLocal() {
@@ -326,6 +349,14 @@
             const key = `agregados_${negocioIdActual}_${hoy}`;
             const agregadosHoy = parseInt(localStorage.getItem(key) || '0');
             const plan = obtenerPlanStorageLocal();
+            const fotosActualesCount = contarFotosActuales();
+            const fotosFaltantes = plan.maxFotosGaleria - fotosActualesCount;
+            
+            // Si todavía faltan fotos para llegar al límite, permitir agregar
+            if (fotosFaltantes > 0) {
+                return agregadosHoy < fotosFaltantes;
+            }
+            
             return agregadosHoy < plan.cambiarFotosPorDia;
         }
 
@@ -352,15 +383,17 @@
             const cambiarPorDia = plan.cambiarFotosPorDia;
             const puedeBorrar = puedeBorrarHoy();
             const puedeAgregar = puedeAgregarHoy();
+            const fotosActualesCount = contarFotosActuales();
+            const fotosFaltantes = maxFotos - fotosActualesCount;
             
             const borradosKey = `borrados_${negocioIdActual}_${new Date().toISOString().split('T')[0]}`;
             const agregadosKey = `agregados_${negocioIdActual}_${new Date().toISOString().split('T')[0]}`;
             const borradosHoy = parseInt(localStorage.getItem(borradosKey) || '0');
             const agregadosHoy = parseInt(localStorage.getItem(agregadosKey) || '0');
             
-            document.getElementById('fotosHelperText').innerHTML = `📸 ${fotosActuales.length}/${maxFotos} fotos | 🔄 Puedes cambiar ${cambiarPorDia} foto(s) por día | 🗑️ Hoy has borrado ${borradosHoy}/${cambiarPorDia} | ➕ Hoy has agregado ${agregadosHoy}/${cambiarPorDia}`;
+            document.getElementById('fotosHelperText').innerHTML = `📸 ${fotosActualesCount}/${maxFotos} fotos | 🔄 Puedes cambiar ${cambiarPorDia} foto(s) por día | 🗑️ Hoy has borrado ${borradosHoy}/${cambiarPorDia} | ➕ Hoy has agregado ${agregadosHoy}/${fotosFaltantes > 0 ? fotosFaltantes : cambiarPorDia}`;
             
-            if (fotosActuales.length === 0 && !modoAgregarFoto) {
+            if (fotosActualesCount === 0 && !modoAgregarFoto) {
                 container.innerHTML = `<div class="info-box" style="padding: 20px; text-align: center;">📸 No tienes fotos aún. Presiona "+ Agregar nueva foto"</div>`;
             } else {
                 let html = '<div class="fotos-grid">';
@@ -378,19 +411,19 @@
             
             const btnAgregar = document.getElementById('btnAgregarFoto');
             if (btnAgregar) {
-                if (fotosActuales.length >= maxFotos || modoAgregarFoto || !puedeAgregar) {
+                if (fotosActualesCount >= maxFotos || modoAgregarFoto || !puedeAgregar) {
                     btnAgregar.style.display = 'none';
                 } else {
                     btnAgregar.style.display = 'block';
+                    btnAgregar.innerHTML = `+ Agregar nueva foto (te faltan ${fotosFaltantes})`;
                 }
             }
             
             if (modoAgregarFoto) {
                 const formHtml = `
                     <div class="foto-nueva-input">
-                        <input type="file" id="nuevaFotoInput" accept="image/*" style="margin-bottom: 10px;">
+                        <button onclick="abrirGaleriaPanel()" class="btn-galeria" style="margin-bottom: 10px;">📷 Seleccionar de Galería</button>
                         <div style="display: flex; gap: 10px;">
-                            <button onclick="subirNuevaFoto()" style="flex:1; background: #28a745; padding: 12px;">✅ Subir foto</button>
                             <button onclick="cancelarAgregarFoto()" style="flex:1; background: #ef4444; padding: 12px;">❌ Cancelar</button>
                         </div>
                     </div>
@@ -401,14 +434,19 @@
 
         function agregarFoto() {
             const plan = obtenerPlanStorageLocal();
-            if (fotosActuales.length >= plan.maxFotosGaleria) {
+            const fotosActualesCount = contarFotosActuales();
+            
+            if (fotosActualesCount >= plan.maxFotosGaleria) {
                 mostrarMensaje(`⚠️ Límite de ${plan.maxFotosGaleria} fotos alcanzado`, 'error');
                 return;
             }
+            
             if (!puedeAgregarHoy()) {
-                mostrarMensaje(`⚠️ Hoy ya usaste tus ${plan.cambiarFotosPorDia} cambios. Vuelve mañana.`, 'error');
+                const fotosFaltantes = plan.maxFotosGaleria - fotosActualesCount;
+                mostrarMensaje(`⚠️ Solo puedes agregar ${fotosFaltantes} foto(s) hoy para llegar al límite. Vuelve mañana para agregar más.`, 'error');
                 return;
             }
+            
             modoAgregarFoto = true;
             renderizarFotos();
         }
@@ -452,55 +490,62 @@
             }
         }
 
-        async function subirNuevaFoto() {
-            const input = document.getElementById('nuevaFotoInput');
-            const file = input.files[0];
-            if (!file) {
-                mostrarMensaje("⚠️ Selecciona una foto primero", "error");
-                return;
-            }
-            
-            const plan = obtenerPlanStorageLocal();
-            if (!puedeAgregarHoy()) {
-                mostrarMensaje(`⚠️ Hoy ya usaste tus ${plan.cambiarFotosPorDia} cambios. Vuelve mañana.`, 'error');
-                return;
-            }
-            
-            mostrarMensaje("📤 Subiendo foto...", "info");
-            
+        async function subirFotoYGuardar(file, slotIndex) {
             try {
-                let slotLibre = null;
-                for (let i = 1; i <= 10; i++) {
-                    if (!negocioDataActual[`foto${i}`] || negocioDataActual[`foto${i}`] === "") {
-                        slotLibre = i;
-                        break;
-                    }
-                }
-                
-                if (!slotLibre) {
-                    mostrarMensaje("⚠️ No hay espacio para más fotos", "error");
-                    return;
-                }
-                
                 const fotoComprimida = await comprimirFoto(file);
-                const nombreArchivo = `negocio_${negocioIdActual}_foto_${slotLibre}_${Date.now()}.jpg`;
-                const { error } = await db.storage.from('negocios').upload(nombreArchivo, fotoComprimida);
-                if (error) throw error;
+                const nombreArchivo = `negocio_${negocioIdActual}_foto_${slotIndex}_${Date.now()}.jpg`;
+                
+                const { error: uploadError } = await db.storage.from('negocios').upload(nombreArchivo, fotoComprimida);
+                if (uploadError) {
+                    throw uploadError;
+                }
                 
                 const { data: urlData } = db.storage.from('negocios').getPublicUrl(nombreArchivo);
-                const updateData = {};
-                updateData[`foto${slotLibre}`] = urlData.publicUrl;
-                await db.from('negocios').update(updateData).eq('id', negocioIdActual);
                 
-                negocioDataActual[`foto${slotLibre}`] = urlData.publicUrl;
+                const updateData = {};
+                updateData[`foto${slotIndex}`] = urlData.publicUrl;
+                await db.from('negocios').update(updateData).eq('id', negocioIdActual);
+                negocioDataActual[`foto${slotIndex}`] = urlData.publicUrl;
+                
                 registrarAgregado();
-                modoAgregarFoto = false;
-                await cargarFotos();
-                mostrarMensaje("✅ Foto agregada correctamente", "success");
+                return true;
             } catch (error) {
                 console.error("Error subiendo foto:", error);
-                mostrarMensaje("❌ Error al subir foto", "error");
+                return false;
             }
+        }
+
+        function abrirGaleriaPanel() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = async (e) => {
+                if (e.target.files[0]) {
+                    const file = e.target.files[0];
+                    
+                    let slotLibre = null;
+                    for (let i = 1; i <= 10; i++) {
+                        if (!negocioDataActual[`foto${i}`] || negocioDataActual[`foto${i}`] === "") {
+                            slotLibre = i;
+                            break;
+                        }
+                    }
+                    
+                    if (slotLibre) {
+                        const success = await subirFotoYGuardar(file, slotLibre);
+                        if (success) {
+                            mostrarMensaje("✅ Foto agregada", "success");
+                            await cargarFotos();
+                            cancelarAgregarFoto();
+                        } else {
+                            mostrarMensaje("❌ Error al subir la foto", "error");
+                        }
+                    } else {
+                        mostrarMensaje("⚠️ No hay espacio para más fotos", "error");
+                    }
+                }
+            };
+            input.click();
         }
 
         function verificarYBloquear() {
@@ -508,6 +553,7 @@
             if (!plan.puedeEditar) {
                 document.getElementById('productosLista').style.pointerEvents = 'none';
                 document.getElementById('horario').disabled = true;
+                document.getElementById('direccion').disabled = true;
                 document.getElementById('btnAgregarProducto').disabled = true;
                 document.getElementById('btnGuardar').disabled = true;
                 document.getElementById('btnAgregarProducto').style.opacity = '0.5';
@@ -515,14 +561,18 @@
             } else {
                 document.getElementById('productosLista').style.pointerEvents = 'auto';
                 document.getElementById('horario').disabled = false;
+                document.getElementById('direccion').disabled = false;
                 document.getElementById('btnAgregarProducto').disabled = false;
                 document.getElementById('btnGuardar').disabled = false;
                 document.getElementById('btnAgregarProducto').style.opacity = '1';
                 document.getElementById('btnGuardar').style.opacity = '1';
             }
             
+            const fotosCount = contarFotosActuales();
+            const planActual = obtenerPlanStorageLocal();
+            
             document.getElementById('infoLimites').innerHTML = `
-                📋 ${plan.nombre} | 📸 ${fotosActuales.length}/${plan.maxFotosGaleria} fotos | 🔄 Cambiar ${plan.cambiarFotosPorDia} foto(s)/día | 📦 ${productosActuales.length}/${plan.maxProductos} productos
+                📋 ${planActual.nombre} | 📸 ${fotosCount}/${planActual.maxFotosGaleria} fotos | 🔄 Cambiar ${planActual.cambiarFotosPorDia} foto(s)/día | 📦 ${productosActuales.length}/${planActual.maxProductos} productos
             `;
         }
 
@@ -544,6 +594,7 @@
                     document.getElementById('loginSection').classList.add('hidden');
                     document.getElementById('panelSection').classList.remove('hidden');
                     document.getElementById('horario').value = negocioDataActual.horario || "";
+                    document.getElementById('direccion').value = negocioDataActual.direccion || "";
                     document.getElementById('infoNegocio').innerHTML = `<strong>${negocioDataActual.nombre}</strong>`;
                     
                     const { data: prods } = await db.from('Productos').select('*').eq('negocio_id', negocioIdActual);
@@ -574,6 +625,16 @@
             });
         }
 
+        function escapeHtml(str) {
+            if (!str) return "";
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
         function actualizarProductosDesdeInputs() {
             for (let i = 0; i < productosActuales.length; i++) {
                 const nombreInput = document.getElementById(`prod_nombre_${i}`);
@@ -583,16 +644,6 @@
                     productosActuales[i].precio = precioInput.value;
                 }
             }
-        }
-
-        function escapeHtml(str) {
-            if (!str) return "";
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
         }
 
         function agregarProducto() {
@@ -618,7 +669,15 @@
             
             try {
                 const horario = document.getElementById('horario').value;
-                await db.from('negocios').update({ horario }).eq('id', negocioIdActual);
+                const direccion = document.getElementById('direccion').value;
+                const linkGps = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(direccion)}`;
+                
+                await db.from('negocios').update({ 
+                    horario: horario,
+                    direccion: direccion,
+                    maps: linkGps
+                }).eq('id', negocioIdActual);
+                
                 await db.from('Productos').delete().eq('negocio_id', negocioIdActual);
                 
                 for (let p of productosActuales) {
@@ -626,6 +685,9 @@
                         await db.from('Productos').insert({ negocio_id: negocioIdActual, nombre: p.nombre, precio: p.precio });
                     }
                 }
+                
+                negocioDataActual.direccion = direccion;
+                negocioDataActual.maps = linkGps;
                 
                 mostrarMensaje("✅ Todo guardado correctamente", "success");
                 verificarYBloquear();
@@ -662,7 +724,10 @@
             }
         }
 
-        function cerrarSesion() { window.location.href = 'index.html'; }
+        function cerrarSesion() { 
+            localStorage.setItem('volviendo_formulario', 'true');
+            window.location.href = 'index.html'; 
+        }
     </script>
 </body>
-    </html>
+</html>
