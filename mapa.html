@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Mapa - Santiago Market</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #0f172a; 
+            font-family: 'Segoe UI', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #map { 
+            height: 100vh; 
+            width: 100%;
+            z-index: 1;
+        }
+        .header-mapa {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            padding: 12px 16px;
+            text-align: center;
+            z-index: 2;
+            border-bottom: 2px solid #28a745;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .header-mapa h2 {
+            color: #f1c40f;
+            font-size: 18px;
+            margin: 0;
+        }
+        .header-mapa p {
+            color: #94a3b8;
+            font-size: 11px;
+            margin: 3px 0 0;
+        }
+        .btn-volver {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 12px 20px;
+            font-weight: bold;
+            z-index: 2;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-size: 14px;
+        }
+        .btn-volver:active { transform: scale(0.96); }
+        .info-negocio {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            left: 100px;
+            background: #1e293b;
+            border-radius: 20px;
+            padding: 12px;
+            z-index: 2;
+            border-left: 4px solid #28a745;
+            display: none;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .info-negocio h4 { 
+            color: #f1c40f; 
+            margin-bottom: 4px; 
+            font-size: 14px;
+        }
+        .info-negocio p { 
+            color: #94a3b8; 
+            font-size: 11px; 
+            margin: 2px 0;
+        }
+        .btn-ir { 
+            background: #25D366; 
+            color: white; 
+            border: none; 
+            border-radius: 20px; 
+            padding: 6px 12px;
+            margin-top: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        .cargando {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            z-index: 3;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 20px;
+            text-align: center;
+        }
+        .filtros-mapa {
+            position: fixed;
+            top: 70px;
+            left: 10px;
+            right: 10px;
+            background: #1e293b;
+            border-radius: 30px;
+            padding: 8px 12px;
+            z-index: 2;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            backdrop-filter: blur(10px);
+            border: 1px solid #334155;
+        }
+        .filtro-mapa-btn {
+            background: #334155;
+            border: none;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 12px;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .filtro-mapa-btn.active {
+            background: #28a745;
+        }
+        @media (max-width: 550px) {
+            .info-negocio { left: 80px; right: 10px; padding: 10px; }
+            .btn-volver { padding: 10px 16px; font-size: 12px; }
+            .filtros-mapa { top: 65px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-mapa">
+        <h2>🗺️ Santiago Market - Mapa de Negocios</h2>
+        <p>📍 Toca una chincheta para ver el negocio | Los colores son por categoría</p>
+    </div>
+    
+    <div class="filtros-mapa" id="filtrosMapa">
+        <button class="filtro-mapa-btn active" data-cat="todos">📱 Todos</button>
+        <button class="filtro-mapa-btn" data-cat="restaurante">🍽️ Restaurantes</button>
+        <button class="filtro-mapa-btn" data-cat="moda">👕 Ropa y Moda</button>
+        <button class="filtro-mapa-btn" data-cat="ferreteria">🔧 Ferreterías</button>
+        <button class="filtro-mapa-btn" data-cat="taller">📱 Talleres</button>
+        <button class="filtro-mapa-btn" data-cat="ventacasa">🏠 Ventas de Casa</button>
+        <button class="filtro-mapa-btn" data-cat="mypime">🏪 Mypimes</button>
+        <button class="filtro-mapa-btn" data-cat="ofertas">🔥 Ofertas</button>
+    </div>
+    
+    <div id="map"></div>
+    <button class="btn-volver" onclick="volver()">← Volver</button>
+    <div id="infoNegocio" class="info-negocio"></div>
+    <div id="cargando" class="cargando">🔄 Cargando negocios...</div>
+
+    <script>
+        const SUPABASE_URL = "https://kospieqzqwbjkjljchlu.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_wlulCYK54_osTvkhq5oNuA_PtRS5apR";
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let mapa;
+        let markers = [];
+        let todosNegocios = [];
+        let categoriaActual = "todos";
+        
+        // Colores por categoría
+        const colores = {
+            restaurante: '#22c55e',
+            moda: '#ec489a',
+            ferreteria: '#f59e0b',
+            taller: '#3b82f6',
+            ventacasa: '#8b5cf6',
+            mypime: '#06b6d4',
+            otros: '#64748b',
+            ofertas: '#ef4444'
+        };
+        
+        function volver() {
+            window.location.href = 'index.html';
+        }
+        
+        // Centro de Santiago de las Vegas
+        const centroSantiago = { lat: 22.9700, lng: -82.3869 };
+        
+        // ========== FUNCIÓN CORREGIDA: Usa coordenadas exactas si existen ==========
+        function obtenerCoordenadas(negocio, index) {
+            // Si el negocio tiene coordenadas exactas guardadas, las usamos
+            if (negocio.latitud && negocio.longitud) {
+                const lat = parseFloat(negocio.latitud);
+                const lng = parseFloat(negocio.longitud);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    console.log(`📍 Usando ubicación EXACTA para: ${negocio.nombre}`, lat, lng);
+                    return { lat: lat, lng: lng };
+                }
+            }
+            
+            // Si no tiene coordenadas, usamos ubicación aproximada alrededor de Santiago
+            console.log(`⚠️ ${negocio.nombre} no tiene coordenadas exactas. Usando ubicación aproximada.`);
+            const variacionLat = (Math.sin(index * 0.7) * 0.03);
+            const variacionLng = (Math.cos(index * 0.5) * 0.03);
+            return {
+                lat: centroSantiago.lat + variacionLat,
+                lng: centroSantiago.lng + variacionLng
+            };
+        }
+        
+        function obtenerIcono(categoria) {
+            const color = colores[categoria] || '#28a745';
+            const svg = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" width="32" height="32">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+            `;
+            return L.divIcon({
+                html: svg,
+                className: 'custom-div-icon',
+                iconSize: [32, 32],
+                popupAnchor: [0, -16]
+            });
+        }
+        
+        async function cargarNegociosEnMapa() {
+            try {
+                const { data: negocios, error } = await db.from('negocios').select('*');
+                
+                if (error) throw error;
+                
+                document.getElementById('cargando').style.display = 'none';
+                
+                if (!negocios || negocios.length === 0) {
+                    console.log("No hay negocios");
+                    return;
+                }
+                
+                todosNegocios = negocios;
+                
+                mapa = L.map('map').setView([centroSantiago.lat, centroSantiago.lng], 13.5);
+                
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                    subdomains: 'abcd',
+                    maxZoom: 19,
+                    minZoom: 10
+                }).addTo(mapa);
+                
+                mostrarNegociosEnMapa(todosNegocios);
+                
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById('cargando').innerHTML = "❌ Error cargando mapa";
+            }
+        }
+        
+        function mostrarNegociosEnMapa(negocios) {
+            // Limpiar marcadores existentes
+            markers.forEach(marker => mapa.removeLayer(marker));
+            markers = [];
+            
+            negocios.forEach((negocio, idx) => {
+                // Filtrar por categoría
+                if (categoriaActual !== "todos" && categoriaActual !== "ofertas") {
+                    if (negocio.categoria !== categoriaActual) return;
+                }
+                if (categoriaActual === "ofertas" && negocio.oferta !== true) return;
+                
+                // USAR LA NUEVA FUNCIÓN que verifica coordenadas exactas
+                const coords = obtenerCoordenadas(negocio, idx);
+                const icono = obtenerIcono(negocio.categoria);
+                
+                // Obtener foto principal
+                let fotoMini = negocio.foto1 || '';
+                
+                const popupContent = `
+                    <div style="min-width: 180px; max-width: 220px;">
+                        ${fotoMini ? `<img src="${fotoMini}" style="width: 100%; height: 100px; object-fit: cover; border-radius: 12px; margin-bottom: 8px;" onerror="this.style.display='none'">` : ''}
+                        <strong style="color:#28a745; font-size: 14px;">${negocio.nombre}</strong><br>
+                        📍 ${negocio.direccion?.substring(0, 40) || 'Sin dirección'}<br>
+                        📱 ${negocio.whatsapp || 'No disponible'}<br>
+                        ${negocio.oferta ? '<span style="color:#f1c40f;">🔥 OFERTA</span><br>' : ''}
+                        <button onclick="window.location.href=\'index.html?negocio=${negocio.id}\'" style="background:#28a745; color:white; border:none; border-radius:20px; padding:6px 12px; margin-top:8px; width:100%; cursor:pointer;">📋 Ver detalles</button>
+                    </div>
+                `;
+                
+                const marker = L.marker([coords.lat, coords.lng], { icon: icono }).addTo(mapa);
+                marker.bindPopup(popupContent);
+                
+                // Evento para mostrar info al pasar el mouse
+                marker.on('mouseover', () => {
+                    const infoDiv = document.getElementById('infoNegocio');
+                    infoDiv.style.display = 'block';
+                    infoDiv.innerHTML = `
+                        <h4>${negocio.nombre}</h4>
+                        <p>📍 ${negocio.direccion?.substring(0, 40) || 'Sin dirección'}</p>
+                        <p>📱 ${negocio.whatsapp || 'Sin teléfono'}</p>
+                        <button class="btn-ir" onclick="window.location.href='index.html?negocio=${negocio.id}'">📋 Ver negocio</button>
+                    `;
+                });
+                
+                marker.on('mouseout', () => {
+                    document.getElementById('infoNegocio').style.display = 'none';
+                });
+                
+                markers.push(marker);
+            });
+        }
+        
+        function filtrarMapa(categoria, elemento) {
+            categoriaActual = categoria;
+            document.querySelectorAll('.filtro-mapa-btn').forEach(btn => btn.classList.remove('active'));
+            if (elemento) elemento.classList.add('active');
+            mostrarNegociosEnMapa(todosNegocios);
+        }
+        
+        // Configurar filtros
+        function configurarFiltros() {
+            document.querySelectorAll('.filtro-mapa-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cat = btn.getAttribute('data-cat');
+                    filtrarMapa(cat, btn);
+                });
+            });
+        }
+        
+        // Inicializar
+        cargarNegociosEnMapa();
+        setTimeout(configurarFiltros, 500);
+    </script>
+</body>
+</html>
