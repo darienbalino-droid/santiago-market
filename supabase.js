@@ -3,19 +3,28 @@ const SUPABASE_URL = "https://kospieqzqwbjkjljchlu.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_wlulCYK54_osTvkhq5oNuA_PtRS5apR";
 
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+console.log("✅ Supabase conectado");
 
 // ========== CARGAR NEGOCIOS ==========
 async function cargarNegociosDesdeSupabase() {
     try {
-        if (typeof mostrarToast === 'function') mostrarToast("🔄 Cargando datos...");
+        console.log("🔄 Cargando negocios desde Supabase...");
         
         const { data: negocios, error: errorNegocios } = await db
             .from('negocios')
             .select('*');
         
-        if (errorNegocios) throw errorNegocios;
+        if (errorNegocios) {
+            console.error("❌ Error cargando negocios:", errorNegocios);
+            throw errorNegocios;
+        }
         
-        if (!negocios || negocios.length === 0) return [];
+        if (!negocios || negocios.length === 0) {
+            console.log("📭 No hay negocios registrados");
+            return [];
+        }
+        
+        console.log(`📦 ${negocios.length} negocios encontrados`);
         
         for (let negocio of negocios) {
             // Cargar productos
@@ -26,7 +35,7 @@ async function cargarNegociosDesdeSupabase() {
             
             negocio.productos = (!errorProductos) ? (productos || []) : [];
             
-            // Cargar galería (hasta foto10)
+            // Construir galería desde foto1 a foto10
             const galeria = [];
             for (let i = 1; i <= 10; i++) {
                 const fotoKey = `foto${i}`;
@@ -36,15 +45,17 @@ async function cargarNegociosDesdeSupabase() {
             }
             negocio.galeria = galeria;
             
-            // Log para depuración
-            console.log(`📸 ${negocio.nombre}: ${galeria.length} fotos cargadas`);
+            // Foto principal
+            if (negocio.foto1 && negocio.foto1 !== "null") {
+                negocio.imagen = negocio.foto1;
+            }
         }
         
-        if (typeof mostrarToast === 'function') mostrarToast(`✅ ${negocios.length} negocios listos`);
+        console.log(`✅ ${negocios.length} negocios listos`);
         return negocios;
         
     } catch (error) {
-        console.error("Error en Supabase:", error);
+        console.error("❌ Error en Supabase:", error);
         return [];
     }
 }
@@ -61,9 +72,10 @@ async function guardarValoracionEnSupabase(negocioId, estrellas) {
             }]);
         
         if (error) throw error;
+        console.log(`✅ Valoración de ${estrellas} estrellas guardada`);
         return true;
     } catch (error) {
-        console.error("Error valorando:", error);
+        console.error("❌ Error valorando:", error);
         return false;
     }
 }
@@ -89,7 +101,7 @@ async function subirFotoSupabase(file, carpeta) {
             
         return urlData.publicUrl;
     } catch (error) {
-        console.error("Error subiendo imagen:", error);
+        console.error("❌ Error subiendo imagen:", error);
         return null;
     }
 }
@@ -120,36 +132,6 @@ function comprimirFoto(file) {
     });
 }
 
-// ========== ACTUALIZAR FOTO DE NEGOCIO ==========
-async function actualizarFotoNegocio(negocioId, fotoUrl, numeroFoto = 1) {
-    try {
-        const updateData = {};
-        updateData[`foto${numeroFoto}`] = fotoUrl;
-        
-        const { error } = await db
-            .from('negocios')
-            .update(updateData)
-            .eq('id', negocioId);
-        
-        if (error) throw error;
-        console.log(`✅ Foto ${numeroFoto} actualizada para negocio ${negocioId}`);
-        return true;
-    } catch (error) {
-        console.error("Error actualizando foto:", error);
-        return false;
-    }
-}
-
-// ========== SUBIR Y ASIGNAR FOTO A NEGOCIO ==========
-async function subirYAsignarFoto(file, negocioId, numeroFoto = 1) {
-    const fotoUrl = await subirFotoSupabase(file, `negocios/${negocioId}`);
-    if (fotoUrl) {
-        await actualizarFotoNegocio(negocioId, fotoUrl, numeroFoto);
-        return fotoUrl;
-    }
-    return null;
-}
-
 // Exportar
 if (typeof window !== 'undefined') {
     window.db = db;
@@ -157,6 +139,5 @@ if (typeof window !== 'undefined') {
     window.guardarValoracionEnSupabase = guardarValoracionEnSupabase;
     window.subirFotoSupabase = subirFotoSupabase;
     window.comprimirFoto = comprimirFoto;
-    window.actualizarFotoNegocio = actualizarFotoNegocio;
-    window.subirYAsignarFoto = subirYAsignarFoto;
+    console.log("✅ Supabase.js cargado correctamente");
 }
