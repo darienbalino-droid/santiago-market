@@ -182,6 +182,33 @@ async function toggleSettings() {
                     }
                 }
             }
+            
+            // Mostrar estado de fase de lanzamiento
+            if (typeof todosLosNegocios !== 'undefined' && todosLosNegocios) {
+                const cantidadNegocios = todosLosNegocios.length;
+                const faseLanzamiento = cantidadNegocios < 30;
+                const tiendasFaltantes = 30 - cantidadNegocios;
+                
+                if (faseLanzamiento && tiendasFaltantes > 0) {
+                    const statsDiv = document.querySelector('.visit-stats');
+                    if (statsDiv && !document.getElementById('faseMensaje')) {
+                        const mensaje = document.createElement('div');
+                        mensaje.id = 'faseMensaje';
+                        mensaje.style.fontSize = '11px';
+                        mensaje.style.color = '#f1c40f';
+                        mensaje.style.marginTop = '8px';
+                        mensaje.style.padding = '5px';
+                        mensaje.style.background = 'rgba(241,196,15,0.1)';
+                        mensaje.style.borderRadius = '20px';
+                        mensaje.style.textAlign = 'center';
+                        mensaje.innerHTML = `🔥 FASE DE LANZAMIENTO 🔥<br>Faltan ${tiendasFaltantes} negocios para activar los planes de destacado<br>📢 ¡Comparte la app con otros dueños!`;
+                        statsDiv.parentNode.appendChild(mensaje);
+                    }
+                } else {
+                    const mensajeExistente = document.getElementById('faseMensaje');
+                    if (mensajeExistente) mensajeExistente.remove();
+                }
+            }
         }
     }
 }
