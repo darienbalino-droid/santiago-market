@@ -311,4 +311,4 @@ if (typeof window !== 'undefined') {
     window.activarPlanExitoLocal = activarPlanExitoLocal;
     window.actualizarTotalTiendas = actualizarTotalTiendas;
     window.estaEnFaseLanzamiento = estaEnFaseLanzamiento;
-                             }
+}
