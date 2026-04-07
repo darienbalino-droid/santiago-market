@@ -52,6 +52,7 @@
         .info-box { display: none; padding: 20px; border-radius: 28px; margin-top: 20px; text-align: center; }
         .error-box { background: rgba(239,68,68,0.15); border-color: #ef4444; color: #ef4444; border: 2px solid; }
         .success-box { background: rgba(40,167,69,0.15); border-color: #28a745; color: #28a745; border: 2px solid; }
+        .warning-box { background: rgba(241,196,15,0.15); border-color: #f1c40f; color: #f1c40f; border: 2px solid; }
         .codigo-box {
             background: linear-gradient(135deg, #1e293b, #0f172a);
             border-radius: 40px;
@@ -113,14 +114,29 @@
             border-radius: 28px;
             margin-bottom: 20px;
             overflow: hidden;
-            border: 2px solid #28a745;
+            border: 2px solid #ef4444;
             z-index: 1;
+            transition: border 0.3s ease;
+        }
+        #mapaUbicacion.ubicacion-confirmada {
+            border: 3px solid #28a745;
         }
         .helper-text {
             font-size: 12px;
             color: #94a3b8;
             margin-top: -15px;
             margin-bottom: 15px;
+        }
+        .helper-text-obligatorio {
+            font-size: 12px;
+            color: #f1c40f;
+            margin-top: -15px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            background: rgba(241,196,15,0.1);
+            padding: 8px 12px;
+            border-radius: 20px;
+            text-align: center;
         }
         .botones-ubicacion {
             display: flex;
@@ -131,6 +147,17 @@
             flex: 1;
             font-size: 14px;
             padding: 12px;
+        }
+        .ubicacion-advertencia {
+            background: rgba(239,68,68,0.2);
+            border: 1px solid #ef4444;
+            border-radius: 16px;
+            padding: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #ef4444;
+            font-size: 13px;
+            display: none;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -175,7 +202,10 @@
             <div id="fotosContainer"></div>
             <button type="button" onclick="agregarCampoFoto()" class="btn-secundario">+ Agregar foto</button>
             
-            <label>🗺️ UBICACIÓN EXACTA EN EL MAPA</label>
+            <label>🗺️ UBICACIÓN EXACTA EN EL MAPA *</label>
+            <div id="ubicacionAdvertencia" class="ubicacion-advertencia">
+                ⚠️ IMPORTANTE: Debes mover el marcador 🟢 hasta la ubicación exacta de tu negocio
+            </div>
             <div id="mapaUbicacion"></div>
             <input type="hidden" id="latitud" value="">
             <input type="hidden" id="longitud" value="">
@@ -183,7 +213,7 @@
                 <button type="button" onclick="obtenerUbicacionActual()" class="btn-ubicacion" style="background: #4285F4;">📍 Mi ubicación actual</button>
                 <button type="button" onclick="centrarEnSantiago()" class="btn-ubicacion" style="background: #f1c40f; color:#0f172a;">🎯 Santiago de las Vegas</button>
             </div>
-            <p class="helper-text">📌 Mueve el marcador 🟢 hasta la ubicación exacta de tu negocio</p>
+            <p class="helper-text-obligatorio">⚠️ OBLIGATORIO: Arrastra el marcador 🟢 hasta la ubicación exacta de tu negocio</p>
             
             <label>💬 Mensajería</label>
             <select id="mensajeria">
@@ -219,6 +249,7 @@
         let mapaSeleccion;
         let marcadorSeleccion;
         let mapaInicializado = false;
+        let ubicacionConfirmada = false;
         
         // Centro de Santiago de las Vegas
         const centroSantiago = { lat: 22.9700, lng: -82.3869 };
@@ -284,7 +315,7 @@
         function mostrarMensaje(msg, tipo) {
             const div = document.getElementById('mensajeResultado');
             div.style.display = 'block';
-            div.className = `info-box ${tipo === 'error' ? 'error-box' : 'success-box'}`;
+            div.className = `info-box ${tipo === 'error' ? 'error-box' : tipo === 'warning' ? 'warning-box' : 'success-box'}`;
             div.innerHTML = msg;
             setTimeout(() => {
                 if (div.innerHTML === msg) div.style.display = 'none';
@@ -343,28 +374,59 @@
             contadorFotos++;
         }
 
-        // ========== FUNCIONES DEL MAPA ==========
+        // ========== FUNCIONES DEL MAPA MEJORADAS ==========
+        function marcarUbicacionComoConfirmada() {
+            ubicacionConfirmada = true;
+            const mapaDiv = document.getElementById('mapaUbicacion');
+            mapaDiv.classList.add('ubicacion-confirmada');
+            const advertencia = document.getElementById('ubicacionAdvertencia');
+            advertencia.style.display = 'none';
+        }
+
         function iniciarMapaSeleccion() {
             if (mapaInicializado) return;
             
-            mapaSeleccion = L.map('mapaUbicacion').setView([centroSantiago.lat, centroSantiago.lng], 14);
+            mapaSeleccion = L.map('mapaUbicacion').setView([centroSantiago.lat, centroSantiago.lng], 15);
             
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             }).addTo(mapaSeleccion);
             
-            // Marcador arrastrable
-            marcadorSeleccion = L.marker([centroSantiago.lat, centroSantiago.lng], { draggable: true }).addTo(mapaSeleccion);
+            // Marcador arrastrable con ícono personalizado más visible
+            const iconoVerde = L.divIcon({
+                html: '📍',
+                className: 'custom-marker',
+                iconSize: [30, 30],
+                popupAnchor: [0, -15]
+            });
+            
+            marcadorSeleccion = L.marker([centroSantiago.lat, centroSantiago.lng], { 
+                draggable: true,
+                title: "Arrástrame hasta la ubicación de tu negocio"
+            }).addTo(mapaSeleccion);
             
             marcadorSeleccion.on('dragend', function() {
                 const pos = marcadorSeleccion.getLatLng();
                 document.getElementById('latitud').value = pos.lat;
                 document.getElementById('longitud').value = pos.lng;
+                marcarUbicacionComoConfirmada();
                 console.log("📍 Ubicación seleccionada:", pos.lat, pos.lng);
-                mostrarMensaje("✅ Ubicación guardada", "success");
+                mostrarMensaje("✅ Ubicación guardada correctamente", "success");
+            });
+            
+            // También permitir seleccionar haciendo clic en el mapa
+            mapaSeleccion.on('click', function(e) {
+                marcadorSeleccion.setLatLng(e.latlng);
+                document.getElementById('latitud').value = e.latlng.lat;
+                document.getElementById('longitud').value = e.latlng.lng;
+                marcarUbicacionComoConfirmada();
+                mostrarMensaje("✅ Ubicación seleccionada", "success");
             });
             
             mapaInicializado = true;
+            
+            // Mostrar advertencia inicial
+            document.getElementById('ubicacionAdvertencia').style.display = 'block';
         }
         
         function obtenerUbicacionActual() {
@@ -377,21 +439,45 @@
                     marcadorSeleccion.setLatLng([lat, lng]);
                     document.getElementById('latitud').value = lat;
                     document.getElementById('longitud').value = lng;
-                    mostrarMensaje("✅ Ubicación obtenida correctamente. Ajusta el marcador si es necesario.", "success");
+                    marcarUbicacionComoConfirmada();
+                    mostrarMensaje("✅ Ubicación obtenida. Ajusta el marcador si es necesario.", "success");
                 }, () => {
-                    mostrarMensaje("❌ No se pudo obtener tu ubicación. Activa los permisos de ubicación.", "error");
+                    mostrarMensaje("❌ No se pudo obtener tu ubicación. Activa los permisos y mueve el marcador manualmente.", "error");
                 });
             } else {
-                mostrarMensaje("❌ Tu navegador no soporta geolocalización", "error");
+                mostrarMensaje("❌ Tu navegador no soporta geolocalización. Mueve el marcador manualmente.", "error");
             }
         }
         
         function centrarEnSantiago() {
-            mapaSeleccion.setView([centroSantiago.lat, centroSantiago.lng], 14);
+            mapaSeleccion.setView([centroSantiago.lat, centroSantiago.lng], 15);
             marcadorSeleccion.setLatLng([centroSantiago.lat, centroSantiago.lng]);
             document.getElementById('latitud').value = centroSantiago.lat;
             document.getElementById('longitud').value = centroSantiago.lng;
-            mostrarMensaje("📍 Centro de Santiago de las Vegas seleccionado. Ajusta el marcador a tu negocio.", "success");
+            marcarUbicacionComoConfirmada();
+            mostrarMensaje("📍 Centro de Santiago seleccionado. Ajusta el marcador a tu negocio.", "success");
+        }
+
+        // ========== VALIDACIÓN DE UBICACIÓN OBLIGATORIA ==========
+        function validarUbicacion() {
+            const latitud = document.getElementById('latitud').value;
+            const longitud = document.getElementById('longitud').value;
+            
+            if (!latitud || !longitud || latitud === "" || longitud === "" || latitud === "0" || longitud === "0") {
+                mostrarMensaje("❌ Debes seleccionar la ubicación exacta en el mapa.\n\n1. Haz clic en 'Mi ubicación actual' o\n2. Arrastra el marcador 🟢 hasta tu negocio", "error");
+                // Hacer scroll hasta el mapa
+                document.getElementById('mapaUbicacion').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Resaltar el mapa
+                const mapaDiv = document.getElementById('mapaUbicacion');
+                mapaDiv.style.border = "3px solid #ef4444";
+                setTimeout(() => {
+                    if (!ubicacionConfirmada) {
+                        mapaDiv.style.border = "2px solid #ef4444";
+                    }
+                }, 2000);
+                return false;
+            }
+            return true;
         }
 
         async function enviarFormulario() {
@@ -406,8 +492,14 @@
             const latitud = document.getElementById('latitud').value || null;
             const longitud = document.getElementById('longitud').value || null;
             
+            // Validar campos obligatorios
             if (!nombre || !direccion || !whatsapp) {
                 mostrarMensaje("Completa todos los campos obligatorios", "error");
+                return;
+            }
+            
+            // ========== NUEVA VALIDACIÓN: UBICACIÓN OBLIGATORIA ==========
+            if (!validarUbicacion()) {
                 return;
             }
             
@@ -465,12 +557,20 @@
                 mostrarMensaje(`✅ ¡Registro exitoso! ${fotosGuardadas} foto(s) guardada(s).`, "success");
                 mostrarCodigo(codigo, nombre, whatsapp);
                 
+                // Limpiar formulario
                 document.getElementById('nombreNegocio').value = '';
                 document.getElementById('direccion').value = '';
                 document.getElementById('whatsapp').value = '';
                 document.getElementById('queVendes').value = '';
                 document.getElementById('horarios').value = '';
                 document.getElementById('fotosContainer').innerHTML = '';
+                document.getElementById('latitud').value = '';
+                document.getElementById('longitud').value = '';
+                ubicacionConfirmada = false;
+                document.getElementById('mapaUbicacion').classList.remove('ubicacion-confirmada');
+                document.getElementById('mapaUbicacion').style.border = "2px solid #ef4444";
+                document.getElementById('ubicacionAdvertencia').style.display = 'block';
+                
                 fotosSeleccionadas = [];
                 contadorFotos = 0;
                 agregarCampoFoto();
@@ -504,4 +604,4 @@
         }, 500);
     </script>
 </body>
-</html>
+    </html>
