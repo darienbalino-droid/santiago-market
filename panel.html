@@ -352,7 +352,6 @@
             const fotosActualesCount = contarFotosActuales();
             const fotosFaltantes = plan.maxFotosGaleria - fotosActualesCount;
             
-            // Si todavía faltan fotos para llegar al límite, permitir agregar
             if (fotosFaltantes > 0) {
                 return agregadosHoy < fotosFaltantes;
             }
@@ -591,6 +590,11 @@
                         localStorage.setItem(`fecha_registro_${negocioIdActual}`, new Date().toISOString());
                     }
                     
+                    // Guardar sesión del dueño
+                    localStorage.setItem('dueno_logueado', 'true');
+                    localStorage.setItem('negocio_id_dueno', negocioIdActual);
+                    localStorage.setItem('negocio_nombre_dueno', negocioDataActual.nombre);
+                    
                     document.getElementById('loginSection').classList.add('hidden');
                     document.getElementById('panelSection').classList.remove('hidden');
                     document.getElementById('horario').value = negocioDataActual.horario || "";
@@ -608,20 +612,47 @@
             } catch (e) { mostrarMensaje("❌ Error", "error"); }
         }
 
+        // ========== NUEVA FUNCIÓN: Actualizar producto mientras escribe ==========
+        function actualizarProductoEnArray(index, campo, valor) {
+            if (productosActuales[index]) {
+                productosActuales[index][campo] = valor;
+            }
+        }
+
+        // ========== FUNCIÓN MEJORADA: Renderizar productos con eventos en tiempo real ==========
         function renderizarProductos() {
             const container = document.getElementById('productosLista');
+            if (!container) return;
+            
             container.innerHTML = '';
+            
             productosActuales.forEach((p, i) => {
                 const div = document.createElement('div');
                 div.className = 'producto-item';
                 div.innerHTML = `
                     <div class="producto-inputs">
-                        <input type="text" placeholder="Nombre del producto" value="${escapeHtml(p.nombre || '')}" id="prod_nombre_${i}">
-                        <input type="text" placeholder="Precio" value="${escapeHtml(p.precio || '')}" id="prod_precio_${i}">
+                        <input type="text" placeholder="Nombre del producto" value="${escapeHtml(p.nombre || '')}" id="prod_nombre_${i}" data-index="${i}" data-campo="nombre">
+                        <input type="text" placeholder="Precio" value="${escapeHtml(p.precio || '')}" id="prod_precio_${i}" data-index="${i}" data-campo="precio">
                     </div>
                     <button class="btn-eliminar" onclick="eliminarProducto(${i})">🗑️ Eliminar</button>
                 `;
                 container.appendChild(div);
+                
+                // Agregar eventos para guardar automáticamente mientras escribe
+                const nombreInput = document.getElementById(`prod_nombre_${i}`);
+                const precioInput = document.getElementById(`prod_precio_${i}`);
+                
+                if (nombreInput) {
+                    nombreInput.addEventListener('input', function(e) {
+                        actualizarProductoEnArray(i, 'nombre', e.target.value);
+                    });
+                }
+                
+                if (precioInput) {
+                    precioInput.addEventListener('input', function(e) {
+                        actualizarProductoEnArray(i, 'precio', e.target.value);
+                    });
+                }
             });
         }
 
@@ -635,36 +666,35 @@
             });
         }
 
-        function actualizarProductosDesdeInputs() {
-            for (let i = 0; i < productosActuales.length; i++) {
-                const nombreInput = document.getElementById(`prod_nombre_${i}`);
-                const precioInput = document.getElementById(`prod_precio_${i}`);
-                if (nombreInput && precioInput) {
-                    productosActuales[i].nombre = nombreInput.value;
-                    productosActuales[i].precio = precioInput.value;
-                }
-            }
-        }
-
         function agregarProducto() {
             const plan = obtenerPlanStorageLocal();
             if (productosActuales.length >= plan.maxProductos) {
                 mostrarMensaje(`⚠️ Límite de ${plan.maxProductos} productos alcanzado`, "error");
                 return;
             }
-            productosActuales.push({ nombre: "Nuevo producto", precio: "0 CUP" });
+            productosActuales.push({ nombre: "", precio: "" });
             renderizarProductos();
             verificarYBloquear();
+            
+            // Auto-scroll al nuevo producto
+            setTimeout(() => {
+                const ultimoProducto = document.querySelector('#productosLista .producto-item:last-child');
+                if (ultimoProducto) {
+                    ultimoProducto.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
         }
 
         function eliminarProducto(index) {
-            productosActuales.splice(index, 1);
-            renderizarProductos();
-            verificarYBloquear();
+            if (confirm('¿Eliminar este producto?')) {
+                productosActuales.splice(index, 1);
+                renderizarProductos();
+                verificarYBloquear();
+                mostrarMensaje("✅ Producto eliminado", "success");
+            }
         }
 
         async function guardarCambios() {
-            actualizarProductosDesdeInputs();
             mostrarMensaje("💾 Guardando...", "info");
             
             try {
@@ -678,18 +708,24 @@
                     maps: linkGps
                 }).eq('id', negocioIdActual);
                 
+                // Limpiar productos antiguos
                 await db.from('Productos').delete().eq('negocio_id', negocioIdActual);
                 
-                for (let p of productosActuales) {
-                    if (p.nombre && p.nombre.trim() !== "") {
-                        await db.from('Productos').insert({ negocio_id: negocioIdActual, nombre: p.nombre, precio: p.precio });
-                    }
+                // Insertar productos nuevos (solo los que tienen nombre)
+                const productosParaGuardar = productosActuales.filter(p => p.nombre && p.nombre.trim() !== "");
+                
+                for (let p of productosParaGuardar) {
+                    await db.from('Productos').insert({ 
+                        negocio_id: negocioIdActual, 
+                        nombre: p.nombre, 
+                        precio: p.precio || "" 
+                    });
                 }
                 
                 negocioDataActual.direccion = direccion;
                 negocioDataActual.maps = linkGps;
                 
-                mostrarMensaje("✅ Todo guardado correctamente", "success");
+                mostrarMensaje(`✅ ${productosParaGuardar.length} productos guardados correctamente`, "success");
                 verificarYBloquear();
             } catch (e) { 
                 console.error(e);
@@ -725,6 +761,9 @@
         }
 
         function cerrarSesion() { 
+            localStorage.removeItem('dueno_logueado');
+            localStorage.removeItem('negocio_id_dueno');
+            localStorage.removeItem('negocio_nombre_dueno');
             localStorage.setItem('volviendo_formulario', 'true');
             window.location.href = 'index.html'; 
         }
