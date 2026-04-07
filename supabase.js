@@ -60,7 +60,7 @@ async function cargarNegociosDesdeSupabase() {
     }
 }
 
-// ========== GUARDAR VALORACIÓN ==========
+// ========== GUARDAR VALORACIÓN DE NEGOCIO ==========
 async function guardarValoracionEnSupabase(negocioId, estrellas) {
     try {
         const { error } = await db
@@ -132,12 +132,103 @@ function comprimirFoto(file) {
     });
 }
 
-// Exportar
+// ========== CONTADOR GLOBAL DE LA APP (SUPABASE) ==========
+async function obtenerVisitasGlobales() {
+    try {
+        const { data, error } = await db
+            .from('estadisticas')
+            .select('visitas_totales')
+            .eq('id', 1)
+            .single();
+        
+        if (error) throw error;
+        return data?.visitas_totales || 0;
+    } catch (error) {
+        console.error("Error obteniendo visitas globales:", error);
+        return 0;
+    }
+}
+
+async function incrementarVisitasGlobales() {
+    try {
+        const { data, error } = await db
+            .from('estadisticas')
+            .select('visitas_totales')
+            .eq('id', 1)
+            .single();
+        
+        if (error) throw error;
+        
+        const nuevasVisitas = (data?.visitas_totales || 0) + 1;
+        
+        const { error: updateError } = await db
+            .from('estadisticas')
+            .update({ visitas_totales: nuevasVisitas })
+            .eq('id', 1);
+        
+        if (updateError) throw updateError;
+        
+        console.log(`📊 Visitas totales: ${nuevasVisitas}`);
+        return nuevasVisitas;
+    } catch (error) {
+        console.error("Error incrementando visitas globales:", error);
+        return 0;
+    }
+}
+
+// ========== VALORACIONES DE LA APP ==========
+async function guardarValoracionApp(puntuacion) {
+    try {
+        const { error } = await db
+            .from('valoraciones_app')
+            .insert([{
+                puntuacion: puntuacion,
+                fecha: new Date().toISOString(),
+                user_agent: navigator.userAgent
+            }]);
+        
+        if (error) throw error;
+        console.log(`✅ Valoración de la APP: ${puntuacion} estrellas`);
+        return true;
+    } catch (error) {
+        console.error("❌ Error guardando valoración de la APP:", error);
+        return false;
+    }
+}
+
+async function obtenerEstadisticasApp() {
+    try {
+        const { data, error } = await db
+            .from('estadisticas_app')
+            .select('*')
+            .single();
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error("Error obteniendo estadísticas:", error);
+        return {
+            total_valoraciones: 0,
+            promedio: 0,
+            estrellas_5: 0,
+            estrellas_4: 0,
+            estrellas_3: 0,
+            estrellas_2: 0,
+            estrellas_1: 0
+        };
+    }
+}
+
+// ========== EXPORTAR ==========
 if (typeof window !== 'undefined') {
     window.db = db;
     window.cargarNegociosDesdeSupabase = cargarNegociosDesdeSupabase;
     window.guardarValoracionEnSupabase = guardarValoracionEnSupabase;
     window.subirFotoSupabase = subirFotoSupabase;
     window.comprimirFoto = comprimirFoto;
+    window.obtenerVisitasGlobales = obtenerVisitasGlobales;
+    window.incrementarVisitasGlobales = incrementarVisitasGlobales;
+    window.guardarValoracionApp = guardarValoracionApp;
+    window.obtenerEstadisticasApp = obtenerEstadisticasApp;
     console.log("✅ Supabase.js cargado correctamente");
-}
+            }
