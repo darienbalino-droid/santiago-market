@@ -23,6 +23,14 @@ function esFavorito(negocioId) {
     return obtenerFavoritos().includes(negocioId);
 }
 
+// ========== VERIFICAR SI EL USUARIO ES DUEÑO DE ESTE NEGOCIO ==========
+// Esta función evita que curiosos activen planes sin ser dueños
+function esDuenoDelNegocio(negocioId) {
+    const duenoLogueado = localStorage.getItem('dueno_logueado') === 'true';
+    const idDelDueno = localStorage.getItem('negocio_id_dueno');
+    return duenoLogueado && idDelDueno == negocioId;
+}
+
 // ========== FUNCIÓN DE UBICACIÓN MEJORADA ==========
 function intentarAbrirMapa(direccion) {
     if (!direccion || direccion === '' || direccion === 'null') {
@@ -266,13 +274,17 @@ Responde con: Basico, Premium o Exito Local
 
 Santiago Market`;
     
+    // ========== BOTÓN DESTACAR: SOLO PARA EL DUEÑO ==========
+    // Verificamos si el usuario logueado es el dueño de ESTE negocio
+    const mostrarBotonDestacar = esDuenoDelNegocio(negocio.id);
+    
     botonesDiv.innerHTML = `
         <div style="display: flex; gap: 8px; flex-wrap: wrap; width: 100%;">
             ${negocio.whatsapp ? `<a href="https://wa.me/${limpiarNumero(negocio.whatsapp)}?text=Hola%20vi%20tu%20negocio%20${encodeURIComponent(negocio.nombre)}%20en%20Santiago%20Market" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-wa">💬 WhatsApp</a>` : ''}
             ${linkUbicacionModal ? `<a href="${linkUbicacionModal}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-maps">📍 Ver Mapa</a>` : `<button class="modal-btn modal-btn-maps" onclick="intentarAbrirMapa('${escapeHtml(negocio.direccion)}')" style="background:#4285F4;">📍 Buscar Mapa</button>`}
             ${negocio.telefono ? `<a href="tel:${limpiarNumero(negocio.telefono)}" class="modal-btn modal-btn-call">📞 Llamar</a>` : ''}
         </div>
-        <a href="https://wa.me/${numeroSoporte}?text=${encodeURIComponent(mensajeWhatsApp)}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-destacar">🔥 QUIERO DESTACAR MI NEGOCIO</a>
+        ${mostrarBotonDestacar ? `<a href="https://wa.me/${numeroSoporte}?text=${encodeURIComponent(mensajeWhatsApp)}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-destacar">🔥 QUIERO DESTACAR MI NEGOCIO</a>` : ''}
     `;
     
     const modalBody = document.querySelector('#modalMenu .modal-body');
