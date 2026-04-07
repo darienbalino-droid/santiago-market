@@ -5,172 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
     <meta name="theme-color" content="#28a745">
     <title>Panel de Control - Santiago Market</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            font-family: 'Segoe UI', sans-serif;
-            min-height: 100vh;
-            padding: 20px;
-            font-size: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0;
-        }
-        .container {
-            max-width: 750px;
-            width: 100%;
-            margin: 0 auto;
-            background: rgba(255,255,255,0.05);
-            backdrop-filter: blur(10px);
-            border-radius: 48px;
-            padding: 35px 30px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        h1 { text-align: center; margin-bottom: 15px; font-size: 42px; }
-        h1 span:first-child { color: #ffffff; }
-        h1 span:last-child { color: #f1c40f; }
-        .subtitle { color: #94a3b8; text-align: center; margin-bottom: 35px; font-size: 22px; }
-        input, textarea, select {
-            width: 100%;
-            padding: 20px 24px;
-            margin-bottom: 22px;
-            background: #1e293b;
-            border: 1.5px solid #334155;
-            border-radius: 28px;
-            color: white;
-            font-size: 20px;
-            outline: none;
-        }
-        input:focus, textarea:focus { border-color: #28a745; box-shadow: 0 0 0 3px rgba(40,167,69,0.3); }
-        textarea { min-height: 120px; resize: vertical; font-size: 20px; }
-        button {
-            width: 100%;
-            padding: 20px;
-            background: linear-gradient(135deg, #28a745, #1f8b3a);
-            border: none;
-            border-radius: 60px;
-            color: white;
-            font-weight: bold;
-            font-size: 24px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        button:hover { transform: scale(1.02); }
-        button:active { transform: scale(0.98); }
-        .info-box {
-            background: rgba(40,167,69,0.15);
-            border: 2px solid #28a745;
-            border-radius: 28px;
-            padding: 20px;
-            margin-bottom: 25px;
-            text-align: center;
-            font-size: 20px;
-        }
-        .error { background: rgba(239,68,68,0.15); border-color: #ef4444; color: #ef4444; }
-        .success { background: rgba(40,167,69,0.15); border-color: #28a745; color: #28a745; }
-        .warning { background: rgba(241,196,15,0.15); border-color: #f1c40f; color: #f1c40f; }
-        .hidden { display: none; }
-        .campo { margin-bottom: 25px; }
-        .campo label { display: block; font-size: 22px; font-weight: 700; color: #cbd5e1; margin-bottom: 12px; }
-        hr { border-color: #334155; margin: 30px 0; }
-        .btn-cerrar { background: #334155; margin-top: 15px; }
-        .producto-item {
-            background: #1e293b;
-            border-radius: 24px;
-            padding: 18px;
-            margin-bottom: 16px;
-            border: 1px solid #334155;
-        }
-        .producto-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .producto-header strong { color: #f1c40f; font-size: 18px; }
-        .producto-inputs { display: flex; gap: 12px; flex-wrap: wrap; }
-        .producto-inputs input { flex: 1; margin-bottom: 0; padding: 14px 16px; font-size: 18px; }
-        .btn-eliminar { background: #ef4444; padding: 12px 20px; font-size: 16px; width: auto; border-radius: 35px; margin-top: 10px; }
-        .btn-agregar { background: #28a745; padding: 18px; font-size: 20px; margin-top: 12px; border-radius: 50px; }
-        .btn-activar { background: #f1c40f; color: #0f172a; margin-top: 10px; }
-        .btn-renovar { background: #f1c40f; color: #0f172a; margin-top: 10px; }
-        .volver-btn {
-            text-align: right;
-            margin-bottom: 20px;
-        }
-        .volver-btn a {
-            color: #f1c40f;
-            text-decoration: none;
-            font-size: 18px;
-            background: rgba(0,0,0,0.3);
-            padding: 8px 18px;
-            border-radius: 40px;
-            display: inline-block;
-        }
-        .fotos-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        .foto-item-panel {
-            position: relative;
-            background: #1e293b;
-            border-radius: 16px;
-            padding: 8px;
-            text-align: center;
-        }
-        .foto-item-panel img {
-            width: 100%;
-            height: 100px;
-            object-fit: cover;
-            border-radius: 12px;
-        }
-        .btn-eliminar-foto {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: #ef4444;
-            border: none;
-            color: white;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            font-size: 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .btn-eliminar-foto:active { transform: scale(0.9); }
-        .foto-nueva-input {
-            margin-top: 10px;
-            padding: 12px;
-            background: #334155;
-            border-radius: 28px;
-            color: white;
-            width: 100%;
-        }
-        .helper-text {
-            font-size: 14px;
-            color: #94a3b8;
-            margin-top: 8px;
-        }
-        .btn-galeria {
-            background: #4285F4;
-            margin-top: 5px;
-            padding: 12px;
-            font-size: 18px;
-        }
-        @media (max-width: 550px) {
-            body { padding: 15px; }
-            .container { padding: 25px 20px; }
-            h1 { font-size: 32px; }
-            .subtitle { font-size: 18px; }
-            .campo label { font-size: 20px; }
-            input, textarea, select { padding: 16px 18px; font-size: 18px; }
-            button { padding: 18px; font-size: 22px; }
-            .info-box { font-size: 18px; }
-            .fotos-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SUPABASE_URL = "https://kospieqzqwbjkjljchlu.supabase.co";
@@ -200,8 +35,8 @@
         }
     </script>
 </head>
-<body>
-    <div class="container">
+<body class="panel-body">
+    <div class="panel-container">
         <div class="volver-btn">
             <a href="#" onclick="cerrarSesion()">← Volver a la tienda</a>
         </div>
@@ -275,7 +110,7 @@
             div.className = `info-box ${tipo === 'error' ? 'error' : tipo === 'success' ? 'success' : 'warning'}`;
             div.style.marginTop = '20px'; div.innerHTML = msg;
             div.classList.add('info-mensaje');
-            document.querySelector('.container').appendChild(div);
+            document.querySelector('.panel-container').appendChild(div);
             setTimeout(() => div.remove(), 4000);
         }
 
@@ -590,7 +425,6 @@
                         localStorage.setItem(`fecha_registro_${negocioIdActual}`, new Date().toISOString());
                     }
                     
-                    // Guardar sesión del dueño
                     localStorage.setItem('dueno_logueado', 'true');
                     localStorage.setItem('negocio_id_dueno', negocioIdActual);
                     localStorage.setItem('negocio_nombre_dueno', negocioDataActual.nombre);
@@ -612,14 +446,12 @@
             } catch (e) { mostrarMensaje("❌ Error", "error"); }
         }
 
-        // ========== NUEVA FUNCIÓN: Actualizar producto mientras escribe ==========
         function actualizarProductoEnArray(index, campo, valor) {
             if (productosActuales[index]) {
                 productosActuales[index][campo] = valor;
             }
         }
 
-        // ========== FUNCIÓN MEJORADA: Renderizar productos con eventos en tiempo real ==========
         function renderizarProductos() {
             const container = document.getElementById('productosLista');
             if (!container) return;
@@ -638,7 +470,6 @@
                 `;
                 container.appendChild(div);
                 
-                // Agregar eventos para guardar automáticamente mientras escribe
                 const nombreInput = document.getElementById(`prod_nombre_${i}`);
                 const precioInput = document.getElementById(`prod_precio_${i}`);
                 
@@ -676,7 +507,6 @@
             renderizarProductos();
             verificarYBloquear();
             
-            // Auto-scroll al nuevo producto
             setTimeout(() => {
                 const ultimoProducto = document.querySelector('#productosLista .producto-item:last-child');
                 if (ultimoProducto) {
@@ -708,10 +538,8 @@
                     maps: linkGps
                 }).eq('id', negocioIdActual);
                 
-                // Limpiar productos antiguos
                 await db.from('Productos').delete().eq('negocio_id', negocioIdActual);
                 
-                // Insertar productos nuevos (solo los que tienen nombre)
                 const productosParaGuardar = productosActuales.filter(p => p.nombre && p.nombre.trim() !== "");
                 
                 for (let p of productosParaGuardar) {
@@ -769,4 +597,4 @@
         }
     </script>
 </body>
-</html>
+        </html>
