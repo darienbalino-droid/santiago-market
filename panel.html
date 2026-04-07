@@ -71,8 +71,32 @@
             <hr>
             
             <div class="campo">
-                <label>🕒 HORARIO DE ATENCIÓN</label>
+                <label>🕒 HORARIO DE ATENCIÓN (texto)</label>
                 <input type="text" id="horario" placeholder="Ej: Lunes a Domingo 9am - 9pm">
+            </div>
+            
+            <div class="campo">
+                <label>📅 DÍAS DE ATENCIÓN</label>
+                <select id="diasAtencion" multiple size="7" style="height: auto; min-height: 180px;">
+                    <option value="Lunes">Lunes</option>
+                    <option value="Martes">Martes</option>
+                    <option value="Miércoles">Miércoles</option>
+                    <option value="Jueves">Jueves</option>
+                    <option value="Viernes">Viernes</option>
+                    <option value="Sábado">Sábado</option>
+                    <option value="Domingo">Domingo</option>
+                </select>
+                <p class="helper-text">💡 Mantén presionado Ctrl (o Cmd en Mac) para seleccionar múltiples días</p>
+            </div>
+            
+            <div class="campo">
+                <label>🕒 HORA DE APERTURA</label>
+                <input type="time" id="horaApertura">
+            </div>
+            
+            <div class="campo">
+                <label>🕒 HORA DE CIERRE</label>
+                <input type="time" id="horaCierre">
             </div>
             
             <div class="campo">
@@ -387,6 +411,9 @@
             if (!plan.puedeEditar) {
                 document.getElementById('productosLista').style.pointerEvents = 'none';
                 document.getElementById('horario').disabled = true;
+                document.getElementById('diasAtencion').disabled = true;
+                document.getElementById('horaApertura').disabled = true;
+                document.getElementById('horaCierre').disabled = true;
                 document.getElementById('direccion').disabled = true;
                 document.getElementById('btnAgregarProducto').disabled = true;
                 document.getElementById('btnGuardar').disabled = true;
@@ -395,6 +422,9 @@
             } else {
                 document.getElementById('productosLista').style.pointerEvents = 'auto';
                 document.getElementById('horario').disabled = false;
+                document.getElementById('diasAtencion').disabled = false;
+                document.getElementById('horaApertura').disabled = false;
+                document.getElementById('horaCierre').disabled = false;
                 document.getElementById('direccion').disabled = false;
                 document.getElementById('btnAgregarProducto').disabled = false;
                 document.getElementById('btnGuardar').disabled = false;
@@ -434,6 +464,24 @@
                     document.getElementById('horario').value = negocioDataActual.horario || "";
                     document.getElementById('direccion').value = negocioDataActual.direccion || "";
                     document.getElementById('infoNegocio').innerHTML = `<strong>${negocioDataActual.nombre}</strong>`;
+                    
+                    // Cargar días de atención
+                    if (negocioDataActual.dias_atencion) {
+                        const diasSelect = document.getElementById('diasAtencion');
+                        if (diasSelect) {
+                            Array.from(diasSelect.options).forEach(opt => {
+                                opt.selected = negocioDataActual.dias_atencion.includes(opt.value);
+                            });
+                        }
+                    }
+                    
+                    // Cargar horas
+                    if (negocioDataActual.hora_apertura) {
+                        document.getElementById('horaApertura').value = negocioDataActual.hora_apertura;
+                    }
+                    if (negocioDataActual.hora_cierre) {
+                        document.getElementById('horaCierre').value = negocioDataActual.hora_cierre;
+                    }
                     
                     const { data: prods } = await db.from('Productos').select('*').eq('negocio_id', negocioIdActual);
                     productosActuales = prods || [];
@@ -532,12 +580,29 @@
                 const direccion = document.getElementById('direccion').value;
                 const linkGps = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(direccion)}`;
                 
-                await db.from('negocios').update({ 
+                // Obtener días seleccionados
+                const diasSelect = document.getElementById('diasAtencion');
+                const diasAtencion = diasSelect ? Array.from(diasSelect.selectedOptions).map(opt => opt.value) : [];
+                
+                // Obtener horas
+                const horaApertura = document.getElementById('horaApertura')?.value || null;
+                const horaCierre = document.getElementById('horaCierre')?.value || null;
+                
+                // Construir objeto de actualización
+                const updateData = {
                     horario: horario,
                     direccion: direccion,
                     maps: linkGps
-                }).eq('id', negocioIdActual);
+                };
                 
+                // Agregar campos estructurados si existen
+                if (diasAtencion.length > 0) updateData.dias_atencion = diasAtencion;
+                if (horaApertura) updateData.hora_apertura = horaApertura;
+                if (horaCierre) updateData.hora_cierre = horaCierre;
+                
+                await db.from('negocios').update(updateData).eq('id', negocioIdActual);
+                
+                // Guardar productos
                 await db.from('Productos').delete().eq('negocio_id', negocioIdActual);
                 
                 const productosParaGuardar = productosActuales.filter(p => p.nombre && p.nombre.trim() !== "");
@@ -552,8 +617,11 @@
                 
                 negocioDataActual.direccion = direccion;
                 negocioDataActual.maps = linkGps;
+                if (diasAtencion.length > 0) negocioDataActual.dias_atencion = diasAtencion;
+                if (horaApertura) negocioDataActual.hora_apertura = horaApertura;
+                if (horaCierre) negocioDataActual.hora_cierre = horaCierre;
                 
-                mostrarMensaje(`✅ ${productosParaGuardar.length} productos guardados correctamente`, "success");
+                mostrarMensaje(`✅ ${productosParaGuardar.length} productos y horario guardados correctamente`, "success");
                 verificarYBloquear();
             } catch (e) { 
                 console.error(e);
