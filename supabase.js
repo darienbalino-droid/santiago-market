@@ -219,6 +219,23 @@ async function obtenerEstadisticasApp() {
     }
 }
 
+// ========== OBTENER VISITAS POR NEGOCIO ==========
+async function obtenerVisitasNegocio(negocioId) {
+    try {
+        const { data, error } = await db
+            .from('visitas_negocios')
+            .select('visitas')
+            .eq('negocio_id', negocioId)
+            .single();
+        
+        if (error && error.code !== 'PGRST116') throw error;
+        return data?.visitas || 0;
+    } catch (error) {
+        console.error("Error obteniendo visitas del negocio:", error);
+        return 0;
+    }
+}
+
 // ========== EXPORTAR ==========
 if (typeof window !== 'undefined') {
     window.db = db;
@@ -230,5 +247,6 @@ if (typeof window !== 'undefined') {
     window.incrementarVisitasGlobales = incrementarVisitasGlobales;
     window.guardarValoracionApp = guardarValoracionApp;
     window.obtenerEstadisticasApp = obtenerEstadisticasApp;
+    window.obtenerVisitasNegocio = obtenerVisitasNegocio;
     console.log("✅ Supabase.js cargado correctamente");
             }
