@@ -30,6 +30,14 @@ function esDuenoDelNegocio(negocioId) {
     return duenoLogueado && idDelDueno == negocioId;
 }
 
+// ========== VERIFICAR SI HAY SUFICIENTES NEGOCIOS PARA DESTACAR ==========
+function haySuficientesNegocios() {
+    if (typeof todosLosNegocios !== 'undefined' && todosLosNegocios) {
+        return todosLosNegocios.length >= 30;
+    }
+    return false;
+}
+
 // ========== FUNCIÓN DE UBICACIÓN MEJORADA ==========
 function intentarAbrirMapa(direccion) {
     if (!direccion || direccion === '' || direccion === 'null') {
@@ -86,13 +94,11 @@ function formatearHora(hora) {
 
 // ========== VERIFICAR SI EL NEGOCIO ESTÁ ABIERTO (VERSIÓN CON CAMPOS ESTRUCTURADOS) ==========
 function estaAbiertoConEstructura(negocio) {
-    // Si tiene los nuevos campos estructurados
     if (negocio.hora_apertura && negocio.hora_cierre && negocio.dias_atencion) {
         const ahora = new Date();
         const diaSemana = ahora.toLocaleDateString('es-ES', { weekday: 'long' });
         const diaCapitalizado = diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1);
         
-        // Verificar si atiende hoy
         if (!negocio.dias_atencion.includes(diaCapitalizado)) {
             return false;
         }
@@ -124,7 +130,6 @@ function estaAbiertoConEstructura(negocio) {
         return (horaActual >= apertura && horaActual <= cierre);
     }
     
-    // Si no tiene los nuevos campos, intentar con el horario texto (fallback)
     if (negocio.horario && negocio.horario !== '' && negocio.horario !== 'null') {
         return estaAbiertoDesdeTexto(negocio.horario);
     }
@@ -209,7 +214,8 @@ function resaltarTexto(texto, busqueda) {
     return escapeHtml(texto).replace(regex, `<mark style="background-color: #f1c40f; color: #0f172a; padding: 0 2px; border-radius: 4px;">$1</mark>`);
 }
 
-function renderizarNegocios() {
+// ========== RENDERIZAR NEGOCIOS ==========
+async function renderizarNegocios() {
     const grid = document.getElementById('cardsGrid');
     if (!grid) return;
     if (!todosLosNegocios || todosLosNegocios.length === 0) {
@@ -255,7 +261,6 @@ function renderizarNegocios() {
         });
     }
     
-    // Orden de llegada (más antiguos primero)
     filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     
     if (filtered.length === 0) { 
@@ -263,7 +268,8 @@ function renderizarNegocios() {
         return; 
     }
     
-    grid.innerHTML = filtered.map(n => {
+    let tarjetasHtml = '';
+    for (const n of filtered) {
         const rating = obtenerRating(n.id);
         const catLabel = { restaurante: '🍽️ RESTAURANTE', ferreteria: '🔧 FERRETERÍA', taller: '📱 TALLER', ventacasa: '🏠 VENTA DE CASA', moda: '👕 MODA', mypime: '🏪 MYPIME', otros: '📦 OTROS' }[n.categoria] || '🏪 NEGOCIO';
         
@@ -297,17 +303,11 @@ function renderizarNegocios() {
         const numeroLlamar = n.whatsapp || n.telefono || '';
         const linkUbicacion = obtenerLinkUbicacionSeguro(n);
         
-        // Obtener visitas del negocio
         let visitasCount = 0;
-        const visitasData = localStorage.getItem(`visitas_${n.id}`);
-        if (visitasData) {
-            try {
-                const visitasParse = JSON.parse(visitasData);
-                visitasCount = visitasParse.total || 0;
-            } catch(e) {}
+        if (typeof obtenerVisitasNegocio === 'function') {
+            visitasCount = await obtenerVisitasNegocio(n.id);
         }
         
-        // Mostrar horario formateado correctamente
         let horarioMostrar = n.horario || 'Consultar';
         if (n.dias_atencion && n.hora_apertura && n.hora_cierre) {
             const aperturaFormateada = formatearHora(n.hora_apertura);
@@ -315,7 +315,7 @@ function renderizarNegocios() {
             horarioMostrar = `${n.dias_atencion.join(', ')} de ${aperturaFormateada} a ${cierreFormateada}`;
         }
         
-        return `
+        tarjetasHtml += `
             <div class="card">
                 <div style="position: relative;">
                     <img loading="lazy" src="${fotoPrincipal}" class="card-img" onclick="toggleGaleria('gal-${n.id}')" onerror="this.onerror=null; this.src='${IMAGEN_POR_DEFECTO}';">
@@ -351,7 +351,8 @@ function renderizarNegocios() {
                 }).join('')}</div></div>` : ''}
             </div>
         `;
-    }).join('');
+    }
+    grid.innerHTML = tarjetasHtml;
 }
 
 function filtrarPorCategoria(categoria, elemento) {
@@ -369,10 +370,11 @@ function filtrarPorCategoria(categoria, elemento) {
 function filtrarNegocios() { renderizarNegocios(); }
 function toggleGaleria(id) { const g = document.getElementById(id); if (g) g.style.display = g.style.display === 'block' ? 'none' : 'block'; }
 
-function abrirModalMenu(id) {
+// ========== ABRIR MODAL MENÚ (ASYNC) ==========
+async function abrirModalMenu(id) {
     const negocio = todosLosNegocios.find(n => n.id === id);
     if (!negocio) return;
-    const stats = registrarVisita(id, negocio.nombre);
+    const stats = await registrarVisita(id, negocio.nombre);
     
     document.getElementById('modalNombre').innerHTML = `${escapeHtml(negocio.nombre)} <span style="float: right; cursor: pointer; font-size: 22px; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 30px;" onclick="pedirCodigoEdicion('${negocio.codigo}', '${negocio.id}')">⚙️</span>`;
     document.getElementById('modalDireccion').innerHTML = `📍 ${escapeHtml(negocio.direccion)}`;
@@ -394,13 +396,23 @@ function abrirModalMenu(id) {
     const botonesDiv = document.getElementById('modalBotones');
     const linkUbicacionModal = obtenerLinkUbicacionSeguro(negocio);
     
+    const suficientesNegocios = haySuficientesNegocios();
+    const cantidadNegocios = todosLosNegocios ? todosLosNegocios.length : 0;
+    
+    let botonDestacarHtml = '';
+    if (suficientesNegocios) {
+        botonDestacarHtml = `<button class="modal-btn modal-btn-destacar" onclick="solicitarCodigoParaDestacar('${negocio.id}', '${negocio.codigo}')">🔥 QUIERO DESTACAR MI NEGOCIO</button>`;
+    } else {
+        botonDestacarHtml = `<button class="modal-btn modal-btn-destacar" disabled style="opacity:0.5; background: #64748b; cursor: not-allowed;">🔥 DESTACAR (Disponible con 30+ negocios - Faltan ${30 - cantidadNegocios})</button>`;
+    }
+    
     botonesDiv.innerHTML = `
         <div style="display: flex; gap: 8px; flex-wrap: wrap; width: 100%;">
             ${negocio.whatsapp ? `<a href="https://wa.me/${limpiarNumero(negocio.whatsapp)}?text=Hola%20vi%20tu%20negocio%20${encodeURIComponent(negocio.nombre)}%20en%20Santiago%20Market" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-wa">💬 WhatsApp</a>` : ''}
             ${linkUbicacionModal ? `<a href="${linkUbicacionModal}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-maps">📍 Ver Mapa</a>` : `<button class="modal-btn modal-btn-maps" onclick="intentarAbrirMapa('${escapeHtml(negocio.direccion)}')" style="background:#4285F4;">📍 Buscar Mapa</button>`}
             ${negocio.telefono ? `<a href="tel:${limpiarNumero(negocio.telefono)}" class="modal-btn modal-btn-call">📞 Llamar</a>` : ''}
         </div>
-        <button class="modal-btn modal-btn-destacar" onclick="solicitarCodigoParaDestacar('${negocio.id}', '${negocio.codigo}')">🔥 QUIERO DESTACAR MI NEGOCIO</button>
+        ${botonDestacarHtml}
     `;
     
     const modalBody = document.querySelector('#modalMenu .modal-body');
@@ -477,4 +489,4 @@ Santiago Market`;
 if (typeof cargarNegociosInteligente === 'function') {
     localStorage.removeItem('santiago_market_cache');
     console.log("🗑️ Caché limpiado, recargando datos frescos...");
-                                                                         }
+}
