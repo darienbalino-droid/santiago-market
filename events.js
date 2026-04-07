@@ -25,11 +25,61 @@ function inicializarEventListeners() {
         star.addEventListener('click', () => valorarApp(parseInt(star.getAttribute('data-value'))));
     });
     
+    // ========== AGREGAR OPCIÓN ULTRA OSCURO ==========
+    agregarOpcionUltraOscuro();
+    
     window.onclick = (event) => {
         if (event.target === document.getElementById('modalMenu')) document.getElementById('modalMenu').style.display = 'none';
         if (event.target === document.getElementById('modalAyuda')) document.getElementById('modalAyuda').style.display = 'none';
         if (event.target === document.getElementById('settingsPanel')) document.getElementById('settingsPanel').style.display = 'none';
     };
+}
+
+// ========== AGREGAR OPCIÓN ULTRA OSCURO AL PANEL ==========
+function agregarOpcionUltraOscuro() {
+    const settingsPanel = document.getElementById('settingsPanel');
+    if (!settingsPanel) return;
+    
+    // Verificar si ya existe
+    if (document.getElementById('optionUltraOscuro')) return;
+    
+    const optionUltraOscuro = document.createElement('div');
+    optionUltraOscuro.className = 'settings-option';
+    optionUltraOscuro.id = 'optionUltraOscuro';
+    optionUltraOscuro.innerHTML = `<span>🌙 Modo ultra oscuro</span><span id="ultraStatus">${localStorage.getItem('ultra_oscuro') === 'true' ? '✅ Activado' : '❌ Desactivado'}</span>`;
+    optionUltraOscuro.addEventListener('click', () => {
+        toggleUltraOscuro();
+        const status = document.getElementById('ultraStatus');
+        if (status) {
+            status.innerText = localStorage.getItem('ultra_oscuro') === 'true' ? '✅ Activado' : '❌ Desactivado';
+        }
+    });
+    
+    const optionTheme = document.getElementById('optionTheme');
+    if (optionTheme && optionTheme.parentNode) {
+        optionTheme.parentNode.insertBefore(optionUltraOscuro, optionTheme.nextSibling);
+    }
+}
+
+// ========== MODO ULTRA OSCURO ==========
+function toggleUltraOscuro() {
+    const body = document.body;
+    const isUltraOscuro = body.classList.toggle('ultra-oscuro');
+    
+    if (isUltraOscuro) {
+        localStorage.setItem('ultra_oscuro', 'true');
+        mostrarToast('🌙 Modo ultra oscuro activado');
+    } else {
+        localStorage.setItem('ultra_oscuro', 'false');
+        mostrarToast('☀️ Modo ultra oscuro desactivado');
+    }
+}
+
+function aplicarUltraOscuro() {
+    const ultraOscuro = localStorage.getItem('ultra_oscuro') === 'true';
+    if (ultraOscuro) {
+        document.body.classList.add('ultra-oscuro');
+    }
 }
 
 // APLICAR TEMA ANTES DE QUE CARGUE EL SPLASH
@@ -39,13 +89,15 @@ function aplicarTemaInicial() {
         document.body.classList.remove('dark-mode');
         document.body.style.backgroundColor = '#ffffff';
     } else {
-        // PRIMERA VEZ O TEMA OSCURO
         document.body.classList.add('dark-mode');
         document.body.style.backgroundColor = '#0f172a';
         if (!savedTheme) {
             localStorage.setItem('theme', 'dark');
         }
     }
+    
+    // Aplicar ultra oscuro si estaba activado
+    aplicarUltraOscuro();
     
     const themeStatus = document.getElementById('themeStatus');
     if (themeStatus) {
@@ -57,29 +109,32 @@ function aplicarTemaInicial() {
     }
 }
 
-function iniciarSplash() {
-    // APLICAR TEMA INMEDIATAMENTE
+// ========== SPLASH CON CONTADOR CORREGIDO ==========
+async function iniciarSplash() {
     aplicarTemaInicial();
     
     let progreso = 0;
     const progressFill = document.getElementById('progressFill');
     const progressText = document.getElementById('progressText');
     
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
         progreso += Math.random() * 15;
         if (progreso >= 100) { progreso = 100; clearInterval(interval); }
         if (progressFill) progressFill.style.width = progreso + '%';
         if (progressText) progressText.innerText = `Cargando ${Math.floor(progreso)}%`;
         if (progreso >= 100) {
-            setTimeout(() => {
+            setTimeout(async () => {
                 const splash = document.getElementById('splash');
                 const main = document.getElementById('mainContent');
                 if (splash) splash.style.opacity = '0';
-                setTimeout(() => {
+                setTimeout(async () => {
                     if (splash) splash.style.display = 'none';
                     if (main) main.style.display = 'block';
                     const visitDisplay = document.getElementById('visitCountDisplay');
-                    if (visitDisplay) visitDisplay.innerText = incrementVisits() + ' visitas';
+                    if (visitDisplay) {
+                        const nuevasVisitas = await incrementVisits();
+                        visitDisplay.innerText = nuevasVisitas + ' visitas';
+                    }
                     setTimeout(() => mostrarToast('✨ ¡Bienvenido a Santiago Market v8.0! ✨'), 500);
                     setTimeout(() => solicitarPermisoNotificaciones(), 2000);
                 }, 500);
@@ -102,7 +157,8 @@ function iniciarSplash() {
     }
 }
 
-function toggleSettings() {
+// ========== TOGGLE SETTINGS CON CONTADOR Y ESTADÍSTICAS ==========
+async function toggleSettings() {
     const panel = document.getElementById('settingsPanel');
     if (panel) {
         if (panel.style.display === 'block') {
@@ -110,7 +166,22 @@ function toggleSettings() {
         } else {
             panel.style.display = 'block';
             const visitDisplay = document.getElementById('visitCountDisplay');
-            if (visitDisplay) visitDisplay.innerText = getVisits() + ' visitas';
+            if (visitDisplay) {
+                const visitas = await getVisits();
+                visitDisplay.innerText = visitas + ' visitas';
+            }
+            
+            // Mostrar estadísticas de valoraciones de la app
+            if (typeof obtenerEstadisticasApp === 'function') {
+                const stats = await obtenerEstadisticasApp();
+                const ratingSection = document.getElementById('appRatingSection');
+                if (ratingSection && stats && stats.total_valoraciones > 0) {
+                    const titleDiv = ratingSection.querySelector('div:first-child');
+                    if (titleDiv) {
+                        titleDiv.innerHTML = `⭐ Califica Santiago Market ⭐ (${stats.total_valoraciones} valoraciones, ⭐ ${stats.promedio})`;
+                    }
+                }
+            }
         }
     }
 }
@@ -145,20 +216,47 @@ function mostrarValoracionApp() {
     }
 }
 
-function valorarApp(puntuacion) {
+// ========== VALORAR APP CON SUPABASE ==========
+async function valorarApp(puntuacion) {
     localStorage.setItem('app_rating', puntuacion);
     localStorage.setItem('app_rated', 'true');
+    
+    // Guardar en Supabase
+    if (typeof guardarValoracionApp === 'function') {
+        await guardarValoracionApp(puntuacion);
+    }
+    
     document.querySelectorAll('#appStars .app-star').forEach((star, index) => {
         if (index < puntuacion) star.classList.add('active');
         else star.classList.remove('active');
     });
-    const ratingMsg = document.getElementById('ratingMessage');
-    if (ratingMsg) ratingMsg.innerText = `¡Gracias por tu valoración de ${puntuacion} estrellas! 🌟`;
+    
+    // Mostrar estadísticas actualizadas
+    if (typeof obtenerEstadisticasApp === 'function') {
+        const stats = await obtenerEstadisticasApp();
+        const ratingMsg = document.getElementById('ratingMessage');
+        if (ratingMsg && stats && stats.total_valoraciones > 0) {
+            ratingMsg.innerHTML = `¡Gracias! ⭐ ${stats.promedio} promedio (${stats.total_valoraciones} valoraciones)`;
+            setTimeout(() => {
+                ratingMsg.innerText = 'Toca las estrellas para valorar';
+            }, 3000);
+        } else if (ratingMsg) {
+            ratingMsg.innerText = `¡Gracias por tu valoración de ${puntuacion} estrellas! 🌟`;
+            setTimeout(() => {
+                ratingMsg.innerText = 'Toca las estrellas para valorar';
+            }, 3000);
+        }
+    } else {
+        const ratingMsg = document.getElementById('ratingMessage');
+        if (ratingMsg) {
+            ratingMsg.innerText = `¡Gracias por tu valoración de ${puntuacion} estrellas! 🌟`;
+            setTimeout(() => {
+                ratingMsg.innerText = 'Toca las estrellas para valorar';
+            }, 3000);
+        }
+    }
+    
     mostrarToast(`⭐ Valoraste la app con ${puntuacion} estrellas`);
-    setTimeout(() => {
-        const msg = document.getElementById('ratingMessage');
-        if (msg) msg.innerText = 'Toca las estrellas para valorar';
-    }, 3000);
 }
 
 function reiniciarValoraciones() {
@@ -198,12 +296,10 @@ function mostrarCreditos() {
     toggleSettings();
 }
 
-// ========== EVITAR REINICIO AL DESLIZAR HACIA ATRÁS ==========
 window.addEventListener('popstate', function(event) {
     event.preventDefault();
 });
 
-// ========== INICIALIZACIÓN ÚNICA ==========
 async function inicializarAppEvents() {
     setTimeout(() => {
         inicializarEventListeners();
