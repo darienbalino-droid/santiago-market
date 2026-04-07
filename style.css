@@ -804,3 +804,216 @@ body.dark-mode .no-results {
     .btn-volver { padding: 10px 16px; font-size: 12px; }
     .filtros-mapa { top: 65px; }
 }
+/* ========== ESTADO ABIERTO/CERRADO ========== */
+.estado {
+    font-size: 11px;
+    margin: 4px 0;
+    font-weight: bold;
+}
+/* ========== MENSAJERÍA DISPONIBLE ========== */
+.mensajeria {
+    font-size: 10px;
+    color: #25D366;
+    margin: 4px 0;
+    background: rgba(37, 211, 102, 0.1);
+    padding: 2px 8px;
+    border-radius: 20px;
+    display: inline-block;
+} 
+/* ========== MODO ULTRA OSCURO ========== */
+body.ultra-oscuro {
+    background-color: #000000 !important;
+}
+
+/* Tarjetas BLANCAS sobre fondo negro */
+body.ultra-oscuro .card {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+}
+
+body.ultra-oscuro .card-title {
+    color: #1e293b !important;
+}
+
+body.ultra-oscuro .card-desc {
+    color: #475569 !important;
+}
+
+body.ultra-oscuro .card-loc {
+    color: #28a745 !important;
+}
+
+/* Buscador */
+body.ultra-oscuro .search-wrapper {
+    background-color: #000000 !important;
+}
+
+body.ultra-oscuro .search-inner {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+
+body.ultra-oscuro .search-inner input {
+    color: #1e293b !important;
+}
+
+/* Filtros */
+body.ultra-oscuro .filters-container {
+    background-color: #000000 !important;
+}
+
+body.ultra-oscuro .filter-chip {
+    background: #e2e8f0 !important;
+    color: #1e293b !important;
+}
+
+body.ultra-oscuro .filter-chip.active {
+    background: #28a745 !important;
+    color: white !important;
+}
+
+/* Header */
+body.ultra-oscuro .header-container {
+    background: #000000 !important;
+    border-bottom-color: #28a745 !important;
+}
+
+body.ultra-oscuro .logo-main {
+    color: white !important;
+}
+
+body.ultra-oscuro .logo-highlight {
+    color: #f1c40f !important;
+}
+
+body.ultra-oscuro .tagline {
+    color: #94a3b8 !important;
+}
+
+/* Modales */
+body.ultra-oscuro .modal-content {
+    background: #ffffff !important;
+    color: #1e293b !important;
+}
+
+body.ultra-oscuro .modal-header h3 {
+    color: #28a745 !important;
+}
+
+/* Panel de ajustes */
+body.ultra-oscuro .settings-panel {
+    background: #ffffff !important;
+}
+
+body.ultra-oscuro .settings-panel h3 {
+    color: #28a745 !important;
+}
+
+body.ultra-oscuro .settings-option {
+    background: #f1f5f9 !important;
+    color: #1e293b !important;
+}
+
+/* Footer */
+body.ultra-oscuro footer {
+    background: #000000 !important;
+    border-top-color: #1a1a1a !important;
+}
+
+body.ultra-oscuro .signature {
+    color: #28a745 !important;
+}
+
+/* Otros elementos */
+body.ultra-oscuro .info-box {
+    background: #f1f5f9 !important;
+    border-color: #28a745 !important;
+    color: #1e293b !important;
+}
+
+body.ultra-oscuro .visitas-count {
+    color: #64748b !important;
+}
+
+body.ultra-oscuro .horario {
+    color: #f59e0b !important;
+    background: rgba(245, 158, 11, 0.1) !important;
+}
+
+body.ultra-oscuro .mensajeria {
+    color: #25D366 !important;
+    background: rgba(37, 211, 102, 0.1) !important;
+}
+
+body.ultra-oscuro .btn-menu-precios {
+    background: rgba(40, 167, 69, 0.1) !important;
+    border-color: #28a745 !important;
+    color: #28a745 !important;
+}
+
+body.ultra-oscuro .btn-action { background: #25D366 !important; color: white !important; }
+body.ultra-oscuro .btn-maps { background: #4285F4 !important; color: white !important; }
+body.ultra-oscuro .btn-call { background: #34B7F1 !important; color: white !important; }
+body.ultra-oscuro .btn-share { background: #6c5b7b !important; color: white !important; }
+
+/* Botones de ayuda */
+body.ultra-oscuro .btn-ayuda,
+body.ultra-oscuro .settings-btn-search {
+    background: #e2e8f0 !important;
+    color: #1e293b !important;
+}
+
+body.ultra-oscuro .btn-ayuda:active,
+body.ultra-oscuro .settings-btn-search:active {
+    background: #28a745 !important;
+    color: white !important;
+}
+/* ========== ESTRELLAS PARA VALORAR LA APP ========== */
+.app-rating-stars {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin: 15px 0;
+}
+
+.app-star {
+    font-size: 32px;
+    cursor: pointer;
+    color: #cbd5e1;
+    transition: all 0.2s;
+}
+
+.app-star.active {
+    color: #ffc107;
+    text-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
+}
+
+.app-star:hover {
+    transform: scale(1.1);
+}
+
+/* Modo oscuro */
+body.dark-mode .app-star {
+    color: #475569;
+}
+
+body.dark-mode .app-star.active {
+    color: #ffc107;
+}
+
+/* Modo ultra oscuro */
+body.ultra-oscuro .app-star {
+    color: #64748b;
+}
+
+body.ultra-oscuro .app-star.active {
+    color: #ffc107;
+}
+
+.rating-message {
+    text-align: center;
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 8px;
+    }
