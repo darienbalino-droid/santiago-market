@@ -19,17 +19,41 @@ function escapeHtml(str) {
     });
 }
 
-// ========== CACHÉ DESACTIVADO (siempre datos frescos desde Supabase) ==========
+// ========== CACHÉ DE NEGOCIOS ==========
 function guardarNegociosEnCache(negocios) {
-    // CACHÉ DESACTIVADO - No guardamos nada en local
-    console.log("🗑️ Caché desactivado - no se guardan datos locales");
-    return;
+    try {
+        const cacheData = {
+            negocios: negocios,
+            timestamp: Date.now(),
+            version: "v8.0"
+        };
+        localStorage.setItem('santiago_market_cache_v8', JSON.stringify(cacheData));
+        console.log("💾 Negocios guardados en caché");
+    } catch (error) {
+        console.error("Error guardando caché:", error);
+    }
 }
 
 function cargarNegociosDesdeCache() {
-    // CACHÉ DESACTIVADO - Siempre carga desde Supabase
-    console.log("🗑️ Caché desactivado - cargando datos frescos desde Supabase...");
-    return null;
+    try {
+        const cacheData = localStorage.getItem('santiago_market_cache_v8');
+        if (!cacheData) return null;
+        
+        const data = JSON.parse(cacheData);
+        const tiempoTranscurrido = Date.now() - data.timestamp;
+        const UNA_HORA = 60 * 60 * 1000; // 1 hora
+        
+        if (tiempoTranscurrido < UNA_HORA) {
+            console.log("📦 Usando caché de negocios (menos de 1 hora)");
+            return data.negocios;
+        } else {
+            console.log("🕐 Caché expirado (más de 1 hora)");
+            return null;
+        }
+    } catch (error) {
+        console.error("Error cargando caché:", error);
+        return null;
+    }
 }
 
 // ========== RATING ==========
@@ -61,20 +85,52 @@ async function votarEstrella(id, valor, event) {
     mostrarToast(`⭐ Calificaste con ${valor} estrellas`);
 }
 
-// ========== VISITAS GLOBALES CON SUPABASE ==========
+// ========== VISITAS POR NEGOCIO CON SUPABASE ==========
 async function registrarVisita(idNegocio, nombreNegocio) {
-    // Registrar visita al negocio específico (opcional, se puede implementar después)
-    // Por ahora solo registramos la visita global de la app
-    
-    // Obtener estadísticas actuales
-    const visitasGlobales = await obtenerVisitasGlobales();
-    
-    return {
-        total: visitasGlobales,
-        hoy: visitasGlobales,
-        semana: visitasGlobales,
-        ultimaVisita: new Date().toLocaleString()
-    };
+    try {
+        const { data: existente, error: errorGet } = await db
+            .from('visitas_negocios')
+            .select('visitas')
+            .eq('negocio_id', idNegocio)
+            .single();
+        
+        let nuevasVisitas = 1;
+        
+        if (existente) {
+            nuevasVisitas = (existente.visitas || 0) + 1;
+            await db
+                .from('visitas_negocios')
+                .update({ visitas: nuevasVisitas, ultima_visita: new Date() })
+                .eq('negocio_id', idNegocio);
+        } else {
+            await db
+                .from('visitas_negocios')
+                .insert({ negocio_id: idNegocio, visitas: 1, ultima_visita: new Date() });
+        }
+        
+        const { data: actualizado } = await db
+            .from('visitas_negocios')
+            .select('visitas')
+            .eq('negocio_id', idNegocio)
+            .single();
+        
+        const visitasActuales = actualizado?.visitas || nuevasVisitas;
+        
+        return {
+            total: visitasActuales,
+            hoy: visitasActuales,
+            semana: visitasActuales,
+            ultimaVisita: new Date().toLocaleString()
+        };
+    } catch (error) {
+        console.error("Error registrando visita:", error);
+        return {
+            total: 0,
+            hoy: 0,
+            semana: 0,
+            ultimaVisita: 'Sin visitas aún'
+        };
+    }
 }
 
 async function getVisits() {
@@ -156,21 +212,35 @@ function limpiarCategoria(cat) {
     return "todos";
 }
 
-// ========== INICIALIZACIÓN SIN CACHÉ (siempre desde Supabase) ==========
+// ========== INICIALIZACIÓN CON CACHÉ ==========
 async function cargarNegociosInteligente() {
-    console.log("🔄 Cargando datos frescos desde Supabase (caché desactivado)...");
+    console.log("🔄 Cargando negocios...");
     
-    // Cargar directamente desde Supabase
+    const negociosCache = cargarNegociosDesdeCache();
+    if (negociosCache && negociosCache.length > 0) {
+        todosLosNegocios = negociosCache;
+        if (typeof renderizarNegocios === 'function') renderizarNegocios();
+        mostrarToast(`✅ ${negociosCache.length} negocios (caché)`);
+        datosCargados = true;
+        
+        if (typeof actualizarTotalTiendas === 'function') {
+            actualizarTotalTiendas(todosLosNegocios.length);
+        }
+        
+        actualizarNegociosEnSegundoPlano();
+        return;
+    }
+    
     if (typeof cargarNegociosDesdeSupabase === 'function') {
         try {
             const negociosNuevos = await cargarNegociosDesdeSupabase();
             if (negociosNuevos && negociosNuevos.length > 0) {
                 todosLosNegocios = negociosNuevos;
+                guardarNegociosEnCache(negociosNuevos);
                 if (typeof renderizarNegocios === 'function') renderizarNegocios();
                 mostrarToast(`✅ ${negociosNuevos.length} negocios cargados`);
                 datosCargados = true;
                 
-                // Actualizar contador para fase de lanzamiento
                 if (typeof actualizarTotalTiendas === 'function') {
                     actualizarTotalTiendas(todosLosNegocios.length);
                 }
@@ -181,12 +251,28 @@ async function cargarNegociosInteligente() {
             }
         } catch (error) {
             console.error("Error cargando desde Supabase:", error);
-            mostrarToast("⚠️ Error de conexión, intenta de nuevo");
+            mostrarToast("⚠️ Error de conexión, usando datos guardados");
             if (!datosCargados) {
                 todosLosNegocios = [];
                 if (typeof renderizarNegocios === 'function') renderizarNegocios();
             }
         }
+    }
+}
+
+async function actualizarNegociosEnSegundoPlano() {
+    try {
+        if (typeof cargarNegociosDesdeSupabase === 'function') {
+            const negociosNuevos = await cargarNegociosDesdeSupabase();
+            if (negociosNuevos && negociosNuevos.length > 0) {
+                todosLosNegocios = negociosNuevos;
+                guardarNegociosEnCache(negociosNuevos);
+                if (typeof renderizarNegocios === 'function') renderizarNegocios();
+                console.log("🔄 Negocios actualizados en segundo plano");
+            }
+        }
+    } catch (error) {
+        console.error("Error actualizando en segundo plano:", error);
     }
 }
 
@@ -219,35 +305,35 @@ function abrirNegocioPorUrl() {
 
 async function inicializarApp() {
     try {
-        console.log("🚀 Iniciando Santiago Market v8.0 (sin caché)...");
+        console.log("🚀 Iniciando Santiago Market v8.0...");
         
-        // Mostrar splash y progreso
         const progressFill = document.getElementById('progressFill');
-        if (progressFill) progressFill.style.width = "30%";
+        const progressText = document.getElementById('progressText');
         
-        // Limpiar cualquier caché residual
-        localStorage.removeItem('santiago_market_cache');
-        localStorage.removeItem('santiago_market_cache_v2');
-        console.log("🗑️ Caché residual limpiado");
+        let progreso = 0;
+        const intervalo = setInterval(() => {
+            progreso += Math.random() * 20;
+            if (progreso >= 90) progreso = 90;
+            if (progressFill) progressFill.style.width = progreso + '%';
+            if (progressText) progressText.innerText = `Cargando ${Math.floor(progreso)}%`;
+        }, 50);
         
-        // Cargar negocios desde Supabase
         await cargarNegociosInteligente();
         
-        // Incrementar contador global de visitas
+        clearInterval(intervalo);
+        if (progressFill) progressFill.style.width = '100%';
+        if (progressText) progressText.innerText = 'Cargando 100%';
+        
         await incrementVisits();
         
-        // Abrir negocio directo si viene por URL
         abrirNegocioPorUrl();
         
-        if (progressFill) progressFill.style.width = "100%";
-        
-        // Ocultar splash y mostrar app
         setTimeout(() => {
             const splash = document.getElementById('splash');
             const main = document.getElementById('mainContent');
             if (splash) splash.style.display = 'none';
             if (main) main.style.display = 'block';
-        }, 500);
+        }, 300);
         
     } catch (error) {
         console.error("Error al arrancar la App:", error);
@@ -262,5 +348,4 @@ async function inicializarApp() {
     }
 }
 
-// Iniciar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', inicializarApp);
