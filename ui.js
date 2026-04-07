@@ -142,6 +142,9 @@ function renderizarNegocios() {
         });
     }
     
+    // ========== ORDEN DE LLEGADA (más antiguos primero) ==========
+    filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    
     if (filtered.length === 0) { 
         grid.innerHTML = '<div class="no-results">🔍 No encontramos negocios aquí.<br><br>¡Sé el primero en inscribir tu negocio!</div>'; 
         return; 
@@ -256,35 +259,16 @@ function abrirModalMenu(id) {
     } else { galeriaDiv.innerHTML = ''; }
     
     const botonesDiv = document.getElementById('modalBotones');
-    const numeroSoporte = "5352466224";
     const linkUbicacionModal = obtenerLinkUbicacionSeguro(negocio);
-    const mensajeWhatsApp = `🎯 SANTIAGO MARKET - PLANES DE DESTACADO 🎯
-
-📌 PLAN BÁSICO - 1000 CUP
-30 días - 7 productos - 1 foto - 15 días destacado
-
-👑 PLAN PREMIUM - 2000 CUP
-30 días - 15 productos - 3 fotos - Destacado siempre
-
-✨ PLAN ÉXITO LOCAL - 3000 CUP
-40 días - 15 productos - 10 fotos - Destacado siempre
-🎟️ SOLO 5 CUPOS DISPONIBLES
-
-Responde con: Basico, Premium o Exito Local
-
-Santiago Market`;
     
-    // ========== BOTÓN DESTACAR: SOLO PARA EL DUEÑO ==========
-    // Verificamos si el usuario logueado es el dueño de ESTE negocio
-    const mostrarBotonDestacar = esDuenoDelNegocio(negocio.id);
-    
+    // ========== BOTÓN DESTACAR: SIEMPRE VISIBLE, PERO PIDE CÓDIGO ==========
     botonesDiv.innerHTML = `
         <div style="display: flex; gap: 8px; flex-wrap: wrap; width: 100%;">
             ${negocio.whatsapp ? `<a href="https://wa.me/${limpiarNumero(negocio.whatsapp)}?text=Hola%20vi%20tu%20negocio%20${encodeURIComponent(negocio.nombre)}%20en%20Santiago%20Market" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-wa">💬 WhatsApp</a>` : ''}
             ${linkUbicacionModal ? `<a href="${linkUbicacionModal}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-maps">📍 Ver Mapa</a>` : `<button class="modal-btn modal-btn-maps" onclick="intentarAbrirMapa('${escapeHtml(negocio.direccion)}')" style="background:#4285F4;">📍 Buscar Mapa</button>`}
             ${negocio.telefono ? `<a href="tel:${limpiarNumero(negocio.telefono)}" class="modal-btn modal-btn-call">📞 Llamar</a>` : ''}
         </div>
-        ${mostrarBotonDestacar ? `<a href="https://wa.me/${numeroSoporte}?text=${encodeURIComponent(mensajeWhatsApp)}" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-destacar">🔥 QUIERO DESTACAR MI NEGOCIO</a>` : ''}
+        <button class="modal-btn modal-btn-destacar" onclick="solicitarCodigoParaDestacar('${negocio.id}', '${negocio.codigo}')">🔥 QUIERO DESTACAR MI NEGOCIO</button>
     `;
     
     const modalBody = document.querySelector('#modalMenu .modal-body');
@@ -319,10 +303,44 @@ function compartirNegocio(nombre, direccion, whatsapp) {
 
 function mostrarHorario(horario) { mostrarToast(`🕒 Horario: ${horario}`); }
 
+// ========== SOLICITAR CÓDIGO PARA DESTACAR NEGOCIO ==========
+function solicitarCodigoParaDestacar(negocioId, codigoReal) {
+    const codigoIngresado = prompt("🔐 Este servicio es solo para el dueño del negocio.\n\nIngresa tu código de acceso para ver los planes de destacado:");
+    
+    if (!codigoIngresado) {
+        mostrarToast("❌ Operación cancelada");
+        return;
+    }
+    
+    if (codigoIngresado === codigoReal) {
+        const numeroSoporte = "5352466224";
+        const mensajeWhatsApp = `🎯 SANTIAGO MARKET - PLANES DE DESTACADO 🎯
+
+📌 PLAN BÁSICO - 1000 CUP
+30 días - 7 productos - 1 foto - 15 días destacado
+
+👑 PLAN PREMIUM - 2000 CUP
+30 días - 15 productos - 3 fotos - Destacado siempre
+
+✨ PLAN ÉXITO LOCAL - 3000 CUP
+40 días - 15 productos - 10 fotos - Destacado siempre
+🎟️ SOLO 5 CUPOS DISPONIBLES
+
+Responde con: Basico, Premium o Exito Local
+
+Santiago Market`;
+        
+        window.open(`https://wa.me/${numeroSoporte}?text=${encodeURIComponent(mensajeWhatsApp)}`, '_blank');
+        mostrarToast("✅ Código correcto. Serás redirigido a WhatsApp");
+    } else {
+        mostrarToast("❌ Código incorrecto. No eres el dueño de este negocio");
+    }
+}
+
 // ========== LIMPIAR CACHÉ AL INICIAR ==========
 // Forzar recarga de datos sin caché
 if (typeof cargarNegociosInteligente === 'function') {
     // Limpiar caché local para forzar recarga
     localStorage.removeItem('santiago_market_cache');
     console.log("🗑️ Caché limpiado, recargando datos frescos...");
-        }
+                }
