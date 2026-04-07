@@ -61,39 +61,29 @@ async function votarEstrella(id, valor, event) {
     mostrarToast(`⭐ Calificaste con ${valor} estrellas`);
 }
 
-// ========== VISITAS ==========
-function registrarVisita(idNegocio, nombreNegocio) {
-    const hoy = new Date().toISOString().split('T')[0];
-    const fechaCompleta = new Date().toLocaleString();
-    let data = localStorage.getItem(`visitas_${idNegocio}`);
-    if (!data) {
-        data = { total: 0, hoy: 0, semana: 0, ultimaVisita: null, historial: {} };
-    } else {
-        data = JSON.parse(data);
-    }
-    data.total++;
-    data.hoy = (data.historial[hoy] || 0) + 1;
-    data.historial[hoy] = data.hoy;
-    const semanaKeys = Object.keys(data.historial).filter(fecha => {
-        const diff = (new Date() - new Date(fecha)) / (1000 * 60 * 60 * 24);
-        return diff <= 7;
-    });
-    data.semana = semanaKeys.reduce((sum, key) => sum + data.historial[key], 0);
-    data.ultimaVisita = fechaCompleta;
-    localStorage.setItem(`visitas_${idNegocio}`, JSON.stringify(data));
-    return data;
+// ========== VISITAS GLOBALES CON SUPABASE ==========
+async function registrarVisita(idNegocio, nombreNegocio) {
+    // Registrar visita al negocio específico (opcional, se puede implementar después)
+    // Por ahora solo registramos la visita global de la app
+    
+    // Obtener estadísticas actuales
+    const visitasGlobales = await obtenerVisitasGlobales();
+    
+    return {
+        total: visitasGlobales,
+        hoy: visitasGlobales,
+        semana: visitasGlobales,
+        ultimaVisita: new Date().toLocaleString()
+    };
 }
 
-function getVisits() {
-    let visits = localStorage.getItem('app_visits');
-    return visits === null ? 0 : parseInt(visits);
+async function getVisits() {
+    return await obtenerVisitasGlobales();
 }
 
-function incrementVisits() {
-    let visits = getVisits();
-    visits++;
-    localStorage.setItem('app_visits', visits);
-    return visits;
+async function incrementVisits() {
+    const nuevasVisitas = await incrementarVisitasGlobales();
+    return nuevasVisitas;
 }
 
 // ========== TOAST ==========
@@ -200,6 +190,33 @@ async function cargarNegociosInteligente() {
     }
 }
 
+// ========== ABRIR NEGOCIO DIRECTO DESDE URL ==========
+function abrirNegocioPorUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const negocioId = urlParams.get('negocio');
+    
+    if (negocioId) {
+        const esperar = setInterval(() => {
+            if (todosLosNegocios && todosLosNegocios.length > 0) {
+                clearInterval(esperar);
+                const negocio = todosLosNegocios.find(n => n.id == negocioId);
+                if (negocio) {
+                    setTimeout(() => {
+                        if (typeof abrirModalMenu === 'function') {
+                            abrirModalMenu(negocio.id);
+                        }
+                    }, 800);
+                    console.log("📱 Abriendo negocio directo:", negocio.nombre);
+                }
+            }
+        }, 300);
+        
+        setTimeout(() => {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 1000);
+    }
+}
+
 async function inicializarApp() {
     try {
         console.log("🚀 Iniciando Santiago Market v8.0 (sin caché)...");
@@ -215,6 +232,12 @@ async function inicializarApp() {
         
         // Cargar negocios desde Supabase
         await cargarNegociosInteligente();
+        
+        // Incrementar contador global de visitas
+        await incrementVisits();
+        
+        // Abrir negocio directo si viene por URL
+        abrirNegocioPorUrl();
         
         if (progressFill) progressFill.style.width = "100%";
         
