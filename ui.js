@@ -24,7 +24,6 @@ function esFavorito(negocioId) {
 }
 
 // ========== VERIFICAR SI EL USUARIO ES DUEÑO DE ESTE NEGOCIO ==========
-// Esta función evita que curiosos activen planes sin ser dueños
 function esDuenoDelNegocio(negocioId) {
     const duenoLogueado = localStorage.getItem('dueno_logueado') === 'true';
     const idDelDueno = localStorage.getItem('negocio_id_dueno');
@@ -71,6 +70,120 @@ function obtenerLinkUbicacionSeguro(negocio) {
     }
     
     return null;
+}
+
+// ========== FUNCIÓN PARA FORMATEAR HORA (09:00:00 -> 9:00 am) ==========
+function formatearHora(hora) {
+    if (!hora) return '';
+    let partes = hora.split(':');
+    let horaNum = parseInt(partes[0]);
+    let minutos = partes[1];
+    let ampm = horaNum >= 12 ? 'pm' : 'am';
+    let hora12 = horaNum % 12;
+    if (hora12 === 0) hora12 = 12;
+    return `${hora12}:${minutos} ${ampm}`;
+}
+
+// ========== VERIFICAR SI EL NEGOCIO ESTÁ ABIERTO (VERSIÓN CON CAMPOS ESTRUCTURADOS) ==========
+function estaAbiertoConEstructura(negocio) {
+    // Si tiene los nuevos campos estructurados
+    if (negocio.hora_apertura && negocio.hora_cierre && negocio.dias_atencion) {
+        const ahora = new Date();
+        const diaSemana = ahora.toLocaleDateString('es-ES', { weekday: 'long' });
+        const diaCapitalizado = diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1);
+        
+        // Verificar si atiende hoy
+        if (!negocio.dias_atencion.includes(diaCapitalizado)) {
+            return false;
+        }
+        
+        const horaActual = ahora.getHours() + ahora.getMinutes() / 60;
+        
+        let horaAperturaNum = 0, minApertura = 0;
+        let horaCierreNum = 0, minCierre = 0;
+        
+        if (negocio.hora_apertura.includes(':')) {
+            const partes = negocio.hora_apertura.split(':');
+            horaAperturaNum = parseInt(partes[0]);
+            minApertura = parseInt(partes[1]);
+        } else {
+            horaAperturaNum = parseInt(negocio.hora_apertura);
+        }
+        
+        if (negocio.hora_cierre.includes(':')) {
+            const partes = negocio.hora_cierre.split(':');
+            horaCierreNum = parseInt(partes[0]);
+            minCierre = parseInt(partes[1]);
+        } else {
+            horaCierreNum = parseInt(negocio.hora_cierre);
+        }
+        
+        const apertura = horaAperturaNum + minApertura / 60;
+        const cierre = horaCierreNum + minCierre / 60;
+        
+        return (horaActual >= apertura && horaActual <= cierre);
+    }
+    
+    // Si no tiene los nuevos campos, intentar con el horario texto (fallback)
+    if (negocio.horario && negocio.horario !== '' && negocio.horario !== 'null') {
+        return estaAbiertoDesdeTexto(negocio.horario);
+    }
+    
+    return null;
+}
+
+// ========== FALLBACK: Analizar horario desde texto ==========
+function estaAbiertoDesdeTexto(horario) {
+    if (!horario || horario === '' || horario === 'null') return null;
+    
+    const ahora = new Date();
+    const horaActual = ahora.getHours();
+    const minutosActual = ahora.getMinutes();
+    const horaMinutoActual = horaActual + minutosActual / 60;
+    
+    const numeros = horario.match(/(\d{1,2})(?::(\d{2}))?/g);
+    
+    if (!numeros || numeros.length < 2) return null;
+    
+    let horaApertura = parseInt(numeros[0]);
+    let horaCierre = parseInt(numeros[numeros.length - 1]);
+    let minApertura = 0;
+    let minCierre = 0;
+    
+    if (numeros[0].includes(':')) {
+        const partes = numeros[0].split(':');
+        horaApertura = parseInt(partes[0]);
+        minApertura = parseInt(partes[1]);
+    }
+    
+    if (numeros[numeros.length - 1].includes(':')) {
+        const partes = numeros[numeros.length - 1].split(':');
+        horaCierre = parseInt(partes[0]);
+        minCierre = parseInt(partes[1]);
+    }
+    
+    const tienePM = horario.toLowerCase().includes('pm');
+    const tieneAM = horario.toLowerCase().includes('am');
+    
+    if (tienePM) {
+        if (horaCierre < 12) horaCierre += 12;
+        if (horaApertura < 12 && horaApertura !== 12) horaApertura += 12;
+    }
+    
+    if (tieneAM && horaApertura === 12) horaApertura = 0;
+    if (tieneAM && horaCierre === 12) horaCierre = 0;
+    
+    const apertura = horaApertura + minApertura / 60;
+    const cierre = horaCierre + minCierre / 60;
+    
+    return (horaMinutoActual >= apertura && horaMinutoActual <= cierre);
+}
+
+function getEstadoTexto(negocio) {
+    const abierto = estaAbiertoConEstructura(negocio);
+    if (abierto === null) return '<span style="color:#94a3b8;">🕒 Horario no definido</span>';
+    if (abierto === true) return '<span style="color:#28a745;">🟢 ABIERTO</span>';
+    return '<span style="color:#ef4444;">🔴 CERRADO</span>';
 }
 
 // ========== TOP 10 MEJOR VALORADOS ==========
@@ -142,7 +255,7 @@ function renderizarNegocios() {
         });
     }
     
-    // ========== ORDEN DE LLEGADA (más antiguos primero) ==========
+    // Orden de llegada (más antiguos primero)
     filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     
     if (filtered.length === 0) { 
@@ -154,7 +267,6 @@ function renderizarNegocios() {
         const rating = obtenerRating(n.id);
         const catLabel = { restaurante: '🍽️ RESTAURANTE', ferreteria: '🔧 FERRETERÍA', taller: '📱 TALLER', ventacasa: '🏠 VENTA DE CASA', moda: '👕 MODA', mypime: '🏪 MYPIME', otros: '📦 OTROS' }[n.categoria] || '🏪 NEGOCIO';
         
-        // ========== FOTO PRINCIPAL ==========
         let fotoPrincipal = n.foto1 || n.foto2 || n.foto3 || n.foto4 || n.foto5 || n.foto6 || n.foto7 || n.foto8 || n.foto9 || n.foto10 || n.imagen || '';
         
         if (!fotoPrincipal && n.galeria && n.galeria.length > 0) {
@@ -185,6 +297,24 @@ function renderizarNegocios() {
         const numeroLlamar = n.whatsapp || n.telefono || '';
         const linkUbicacion = obtenerLinkUbicacionSeguro(n);
         
+        // Obtener visitas del negocio
+        let visitasCount = 0;
+        const visitasData = localStorage.getItem(`visitas_${n.id}`);
+        if (visitasData) {
+            try {
+                const visitasParse = JSON.parse(visitasData);
+                visitasCount = visitasParse.total || 0;
+            } catch(e) {}
+        }
+        
+        // Mostrar horario formateado correctamente
+        let horarioMostrar = n.horario || 'Consultar';
+        if (n.dias_atencion && n.hora_apertura && n.hora_cierre) {
+            const aperturaFormateada = formatearHora(n.hora_apertura);
+            const cierreFormateada = formatearHora(n.hora_cierre);
+            horarioMostrar = `${n.dias_atencion.join(', ')} de ${aperturaFormateada} a ${cierreFormateada}`;
+        }
+        
         return `
             <div class="card">
                 <div style="position: relative;">
@@ -198,17 +328,20 @@ function renderizarNegocios() {
                     <div class="card-title">${resaltarTexto(n.nombre, busqueda)} ${esOferta ? '<span style="color:#f1c40f;">🔥</span>' : ''}</div>
                     <div class="card-loc">📍 ${resaltarTexto(n.direccion, busqueda)}</div>
                     <div class="card-desc">${resaltarTexto(n.descripcion || '', busqueda)}</div>
-                    <div class="horario" onclick="mostrarHorario('${escapeHtml(n.horario || 'Consultar')}')">🕒 ${escapeHtml(n.horario || 'Consultar')}</div>
+                    <div class="horario" onclick="mostrarHorario('${escapeHtml(horarioMostrar)}')">🕒 ${escapeHtml(horarioMostrar)}</div>
+                    <div class="estado">${getEstadoTexto(n)}</div>
+                    ${n.mensajeria === 'SI' ? '<div class="mensajeria">💬 Mensajería disponible</div>' : ''}
                     <div class="rating-container">
                         <div class="stars" onclick="event.stopPropagation()">${estrellasHtml}</div>
                         <div class="rating-average">${promedioTexto}</div>
                     </div>
+                    <div class="visitas-count">👁️ ${visitasCount} visitas</div>
                     <div class="btn-menu-precios" onclick="abrirModalMenu('${n.id}')">🍽️ MENÚ Y PRECIOS</div>
                     <div class="btn-group">
                         ${n.whatsapp ? `<a href="${waLink}" target="_blank" rel="noopener noreferrer" class="btn-action" onclick="event.stopPropagation();">💬 WhatsApp</a>` : ''}
                         ${linkUbicacion ? `<a href="${linkUbicacion}" target="_blank" rel="noopener noreferrer" class="btn-maps" onclick="event.stopPropagation();">📍 Ver Mapa</a>` : `<button class="btn-maps" onclick="event.stopPropagation(); intentarAbrirMapa('${escapeHtml(n.direccion)}')" style="background:#4285F4;">📍 Buscar Mapa</button>`}
                         ${numeroLlamar ? `<a href="tel:${limpiarNumero(numeroLlamar)}" class="btn-call" onclick="event.stopPropagation();">📞 Llamar</a>` : ''}
-                        <button class="btn-share" onclick="compartirNegocio('${escapeHtml(n.nombre)}', '${escapeHtml(n.direccion)}', '${n.whatsapp}'); event.stopPropagation();">📤 Compartir</button>
+                        <button class="btn-share" onclick="compartirNegocio('${escapeHtml(n.nombre)}', '${escapeHtml(n.direccion)}', '${n.whatsapp}', '${n.id}'); event.stopPropagation();">📤 Compartir</button>
                     </div>
                 </div>
                 ${tieneGaleria ? `<div id="gal-${n.id}" class="galeria"><div class="grid-fotos">${n.galeria.map(img => {
@@ -261,7 +394,6 @@ function abrirModalMenu(id) {
     const botonesDiv = document.getElementById('modalBotones');
     const linkUbicacionModal = obtenerLinkUbicacionSeguro(negocio);
     
-    // ========== BOTÓN DESTACAR: SIEMPRE VISIBLE, PERO PIDE CÓDIGO ==========
     botonesDiv.innerHTML = `
         <div style="display: flex; gap: 8px; flex-wrap: wrap; width: 100%;">
             ${negocio.whatsapp ? `<a href="https://wa.me/${limpiarNumero(negocio.whatsapp)}?text=Hola%20vi%20tu%20negocio%20${encodeURIComponent(negocio.nombre)}%20en%20Santiago%20Market" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-wa">💬 WhatsApp</a>` : ''}
@@ -295,15 +427,20 @@ function pedirCodigoEdicion(codigoReal, negocioId) {
     } else if (codigoIngresado) { mostrarToast("❌ Código incorrecto"); }
 }
 
-function compartirNegocio(nombre, direccion, whatsapp) {
-    const texto = `🌟 ${nombre} - Santiago Market 🌟\n📍 ${direccion}\n📞 ${whatsapp ? 'WhatsApp: +53' + limpiarNumero(whatsapp) : 'Contáctanos'}\n\nDescubre más en Santiago Market`;
-    if (navigator.share) { navigator.share({ title: nombre, text: texto }); } 
-    else { navigator.clipboard.writeText(texto); mostrarToast(`📋 Información de ${nombre} copiada`); }
+function compartirNegocio(nombre, direccion, whatsapp, negocioId) {
+    const urlDirecta = `${window.location.origin}${window.location.pathname}?negocio=${negocioId}`;
+    const texto = `🌟 ${nombre} - Santiago Market 🌟\n📍 ${direccion}\n📞 ${whatsapp ? 'WhatsApp: +53' + limpiarNumero(whatsapp) : 'Contáctanos'}\n\n🔗 ${urlDirecta}\n\nDescubre más en Santiago Market`;
+    
+    if (navigator.share) { 
+        navigator.share({ title: nombre, text: texto }); 
+    } else { 
+        navigator.clipboard.writeText(texto); 
+        mostrarToast(`📋 Enlace de ${nombre} copiado`); 
+    }
 }
 
 function mostrarHorario(horario) { mostrarToast(`🕒 Horario: ${horario}`); }
 
-// ========== SOLICITAR CÓDIGO PARA DESTACAR NEGOCIO ==========
 function solicitarCodigoParaDestacar(negocioId, codigoReal) {
     const codigoIngresado = prompt("🔐 Este servicio es solo para el dueño del negocio.\n\nIngresa tu código de acceso para ver los planes de destacado:");
     
@@ -337,10 +474,7 @@ Santiago Market`;
     }
 }
 
-// ========== LIMPIAR CACHÉ AL INICIAR ==========
-// Forzar recarga de datos sin caché
 if (typeof cargarNegociosInteligente === 'function') {
-    // Limpiar caché local para forzar recarga
     localStorage.removeItem('santiago_market_cache');
     console.log("🗑️ Caché limpiado, recargando datos frescos...");
-                }
+                                                                         }
