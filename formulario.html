@@ -41,8 +41,23 @@
             <label>🛍️ ¿Qué vendes?</label>
             <textarea id="queVendes" rows="3"></textarea>
             
-            <label>🕒 Horarios</label>
-            <input type="text" id="horarios" placeholder="Lunes a Domingo 9am-9pm">
+            <label>📅 Días de atención *</label>
+            <select id="diasAtencion" multiple size="7" style="height: auto; min-height: 180px;">
+                <option value="Lunes">Lunes</option>
+                <option value="Martes">Martes</option>
+                <option value="Miércoles">Miércoles</option>
+                <option value="Jueves">Jueves</option>
+                <option value="Viernes">Viernes</option>
+                <option value="Sábado">Sábado</option>
+                <option value="Domingo">Domingo</option>
+            </select>
+            <p class="helper-text">💡 Mantén presionado Ctrl (o Cmd en Mac) para seleccionar múltiples días</p>
+            
+            <label>🕒 Hora de apertura *</label>
+            <input type="time" id="horaApertura" required>
+            
+            <label>🕒 Hora de cierre *</label>
+            <input type="time" id="horaCierre" required>
             
             <label>📸 Fotos (máximo 5)</label>
             <div id="fotosContainer"></div>
@@ -315,14 +330,29 @@
             const direccion = document.getElementById('direccion').value.trim();
             const whatsapp = document.getElementById('whatsapp').value.trim();
             const descripcion = document.getElementById('queVendes').value;
-            const horario = document.getElementById('horarios').value;
             const mensajeria = document.getElementById('mensajeria').value;
             const pagos = document.getElementById('pagos').value;
             const latitud = document.getElementById('latitud').value || null;
             const longitud = document.getElementById('longitud').value || null;
             
+            // Nuevos campos de horario
+            const diasAtencionSelect = document.getElementById('diasAtencion');
+            const diasAtencion = Array.from(diasAtencionSelect.selectedOptions).map(opt => opt.value);
+            const horaApertura = document.getElementById('horaApertura').value;
+            const horaCierre = document.getElementById('horaCierre').value;
+            
             if (!nombre || !direccion || !whatsapp) {
                 mostrarMensaje("Completa todos los campos obligatorios", "error");
+                return;
+            }
+            
+            if (diasAtencion.length === 0) {
+                mostrarMensaje("Selecciona al menos un día de atención", "error");
+                return;
+            }
+            
+            if (!horaApertura || !horaCierre) {
+                mostrarMensaje("Completa la hora de apertura y cierre", "error");
                 return;
             }
             
@@ -346,6 +376,9 @@
                 const codigo = nombre.substring(0, 3).toUpperCase() + whatsapp.slice(-4) + Math.floor(Math.random() * 100);
                 const linkGps = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(direccion)}`;
                 
+                // Crear texto de horario para mostrar
+                const horarioTexto = `${diasAtencion.join(', ')} de ${horaApertura} a ${horaCierre}`;
+                
                 const { data: negocioData, error: insertError } = await db
                     .from('negocios')
                     .insert({
@@ -353,7 +386,7 @@
                         categoria: categoria,
                         direccion: direccion,
                         descripcion: descripcion,
-                        horario: horario,
+                        horario: horarioTexto,
                         whatsapp: whatsapp,
                         codigo: codigo,
                         maps: linkGps,
@@ -361,6 +394,9 @@
                         pagos: pagos,
                         latitud: latitud,
                         longitud: longitud,
+                        hora_apertura: horaApertura,
+                        hora_cierre: horaCierre,
+                        dias_atencion: diasAtencion,
                         created_at: new Date().toISOString()
                     })
                     .select();
@@ -388,7 +424,9 @@
                 document.getElementById('direccion').value = '';
                 document.getElementById('whatsapp').value = '';
                 document.getElementById('queVendes').value = '';
-                document.getElementById('horarios').value = '';
+                document.getElementById('horaApertura').value = '';
+                document.getElementById('horaCierre').value = '';
+                document.getElementById('diasAtencion').selectedIndex = -1;
                 document.getElementById('fotosContainer').innerHTML = '';
                 document.getElementById('latitud').value = '';
                 document.getElementById('longitud').value = '';
@@ -428,4 +466,4 @@
         }, 500);
     </script>
 </body>
-</html>
+    </html>
